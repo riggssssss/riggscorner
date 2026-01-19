@@ -19,6 +19,7 @@ const works = [
     services: ['Product Design', 'AI Integration', 'UX/UI Design', 'Full-Stack Development'],
     mediaType: 'video',
     src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768811792/nomada_ggjy78.mov',
+    poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_5,f_jpg,q_90/v1768811792/nomada_ggjy78.jpg',
   },
   {
     id: 2,
@@ -29,6 +30,7 @@ const works = [
     services: ['Creative Direction', '3D Motion', 'Sound Design', 'WebGL'],
     mediaType: 'video',
     src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768812525/Eternal_b13d4h.mp4',
+    poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_20,f_jpg,q_90/v1768812525/Eternal_b13d4h.jpg',
   },
   {
     id: 3,
@@ -39,6 +41,7 @@ const works = [
     services: ['Interaction Design', 'Shaders', 'Performance', 'Creative Coding'],
     mediaType: 'video',
     src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768812462/Lumina_sd7xhc.mp4',
+    poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_5,f_jpg,q_90/v1768812462/Lumina_sd7xhc.jpg',
   },
 ];
 
@@ -230,7 +233,7 @@ export default function Home() {
                     <div className="w-full max-w-[70vw] h-[80vh] flex flex-col justify-center relative group pointer-events-auto">
 
                       {/* Video/Image Container - Exact Video Dimensions */}
-                      <div className="relative w-full" style={{ aspectRatio: '2940/1666' }}>
+                      <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
                         <motion.div
                           ref={(el) => { workRefs.current[work.id] = el; }}
                           className="w-full h-full relative cursor-pointer rounded-2xl overflow-hidden"
@@ -352,7 +355,7 @@ export default function Home() {
                       exit={{ opacity: 0, scale: 0.95, y: 20 }}
                       transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.2 }}
                       className="w-full max-w-5xl mx-auto bg-gray-100 relative shrink-0 rounded-2xl overflow-hidden border border-gray-200/60"
-                      style={{ aspectRatio: '2940/1666' }}
+                      style={{ aspectRatio: '2/1' }}
                     >
                       {/* Dynamic Media Logic */}
                       {work.mediaType === 'video' ? (
