@@ -52,7 +52,7 @@ export default function Home() {
   const workRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   // Shared transition configuration for consistent entry/exit
-  const workTransition = { duration: 0.8, ease: [0.76, 0, 0.24, 1] };
+  const workTransition = { duration: 0.8, ease: [0.76, 0, 0.24, 1] as const };
 
   // Handle work click - expand directly
   const handleWorkClick = (workId: number) => {
@@ -213,7 +213,7 @@ export default function Home() {
                 <div className="max-w-4xl px-20 relative pointer-events-auto">
                   <h2 className="text-5xl md:text-7xl leading-[1.1] font-medium text-gray-200 -tracking-[0.04em] mb-6">Who.</h2>
                   <h2 className="text-5xl md:text-7xl leading-[1.1] font-medium text-black mix-blend-hard-light -tracking-[0.04em] relative z-10">
-                    Crafting digital experiences with a focus on <span className="font-serif text-black italic">motion</span>, typography, and minimalist aesthetics.
+                    Web & App Developer crafting <span className="font-serif text-accent italic">modern</span> digital experiences with <span className="text-accent/80">clean code</span> and <span className="text-accent/80">pixel-perfect</span> design.
                   </h2>
                   <div className="mt-20 flex gap-4 items-center pl-2">
                     <motion.div
@@ -221,7 +221,7 @@ export default function Home() {
                       animate={{ scale: [1, 1.5, 1] }}
                       transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     />
-                    <span className="uppercase tracking-widest text-xs text-gray-500">Based in Castellon, Spain. Available for freelance.</span>
+                    <span className="uppercase tracking-widest text-xs text-gray-500">Based in Castellón, Spain. Open to freelance projects.</span>
                   </div>
                 </div>
               </Slide>
@@ -296,14 +296,14 @@ export default function Home() {
               <Slide className="w-[100vw] bg-transparent text-black relative shrink-0 flex items-center justify-center pointer-events-none">
                 <div className="flex flex-col items-center justify-center text-center pointer-events-auto">
                   <h2 className="text-[18vw] leading-[0.8] font-bold uppercase tracking-tighter mb-12 hover:italic transition-all cursor-pointer font-serif">
-                    Let's<br />Talk
+                    Let's<br /><span className="font-serif text-accent italic">Talk</span>
                   </h2>
                   <div className="flex gap-20 text-lg uppercase tracking-widest">
-                    <a href="mailto:hello@adrian.com" className="hover:line-through decoration-2">Email</a>
-                    <a href="#" className="hover:line-through decoration-2">Instagram</a>
-                    <a href="#" className="hover:line-through decoration-2">LinkedIn</a>
+                    <a href="mailto:adriangarciagarcia.dev@gmail.com" className="hover:text-accent hover:decoration-accent hover:line-through decoration-2 transition-colors">Email</a>
+                    <a href="https://instagram.com/riggscorner" className="hover:text-accent hover:decoration-accent hover:line-through decoration-2 transition-colors">Instagram</a>
+                    <a href="https://linkedin.com/in/adriangarciagarcia" className="hover:text-accent hover:decoration-accent hover:line-through decoration-2 transition-colors">LinkedIn</a>
                   </div>
-                  <p className="absolute bottom-10 text-gray-400 text-xs tracking-widest uppercase">© 2024 Adrian Garcia</p>
+                  <p className="absolute bottom-10 text-gray-400 text-xs tracking-widest uppercase">© 2025 Adrián García</p>
                 </div>
               </Slide>
 
@@ -410,7 +410,7 @@ export default function Home() {
                           }}
                           className="text-right"
                         >
-                          <span className="text-sm uppercase tracking-widest border border-black px-5 py-1.5 rounded-full">{work.category}</span>
+                          <span className="text-sm uppercase tracking-widest border border-accent/20 text-accent px-5 py-1.5 rounded-full">{work.category}</span>
                         </motion.div>
                       </div>
 
@@ -420,7 +420,7 @@ export default function Home() {
                             hidden: { opacity: 0, y: 20 },
                             visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] } }
                           }}>
-                            <p className="text-sm uppercase tracking-widest text-gray-400 mb-4">Tech Stack</p>
+                            <p className="text-sm uppercase tracking-widest text-accent mb-4">Tech Stack</p>
                             <ul className="text-sm space-y-1.5 font-medium leading-relaxed">
                               {/* Dynamic Tech Stack List */}
                               {work.services?.map((service, i) => (
