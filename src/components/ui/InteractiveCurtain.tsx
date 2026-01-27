@@ -172,11 +172,12 @@ function CurtainColumn({
                 >
                     {/* The Image Slice with Parallax */}
                     <motion.div
-                        className="absolute inset-0 opacity-20"
+                        className="absolute inset-0"
                         style={{
-                            backgroundImage: 'url(/hero-texture.png)',
-                            backgroundSize: `${windowWidth + 100}px 100vh`,
+                            backgroundImage: 'url(/images/bg-paris-landscape.png)',
+                            backgroundSize: 'cover',
                             backgroundPositionX: useTransform(smoothParallax, (val) => `calc(-${index * width}px + ${val}px)`),
+                            backgroundPositionY: 'center',
                             backgroundRepeat: 'no-repeat'
                         }}
                     />

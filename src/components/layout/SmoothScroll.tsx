@@ -22,7 +22,11 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
 
     requestAnimationFrame(raf);
 
+    // Expose lenis to window for global access (e.g., from Header)
+    (window as any).lenis = lenis;
+
     return () => {
+      delete (window as any).lenis;
       lenis.destroy();
     };
   }, []);

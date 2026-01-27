@@ -9,11 +9,13 @@ import { useRef } from 'react';
 function MagneticLink({
     href,
     children,
-    isActive
+    isActive,
+    onClick
 }: {
     href: string;
     children: React.ReactNode;
     isActive: boolean;
+    onClick?: (e: React.MouseEvent) => void;
 }) {
     const ref = useRef<HTMLAnchorElement>(null);
 
@@ -34,13 +36,14 @@ function MagneticLink({
         <Link
             ref={ref}
             href={href}
+            onClick={onClick}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             data-magnetic
             data-cursor-text="View"
             className={`relative transition-all duration-500 ease-out ${isActive
-                    ? 'opacity-100'
-                    : 'opacity-50 hover:opacity-100'
+                ? 'opacity-100'
+                : 'opacity-50 hover:opacity-100'
                 }`}
         >
             <span className="relative z-10">{children}</span>
@@ -95,13 +98,43 @@ export default function Header() {
 
             {/* Navigation with magnetic effect */}
             <nav className="hidden md:flex gap-10 uppercase text-sm tracking-widest">
-                <MagneticLink href="#work" isActive={activeSection === 'work'}>
-                    Work
-                </MagneticLink>
-                <MagneticLink href="#about" isActive={activeSection === 'about'}>
+                <MagneticLink
+                    href="#about"
+                    isActive={activeSection === 'about'}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        (window as any).lenis?.scrollTo('#about', {
+                            duration: 2.0,
+                            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+                        });
+                    }}
+                >
                     About
                 </MagneticLink>
-                <MagneticLink href="#contact" isActive={activeSection === 'contact'}>
+                <MagneticLink
+                    href="#work"
+                    isActive={activeSection === 'work'}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        (window as any).lenis?.scrollTo('#work', {
+                            duration: 2.0,
+                            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+                        });
+                    }}
+                >
+                    Work
+                </MagneticLink>
+                <MagneticLink
+                    href="#contact"
+                    isActive={activeSection === 'contact'}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        (window as any).lenis?.scrollTo('#contact', {
+                            duration: 2.0,
+                            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
+                        });
+                    }}
+                >
                     Contact
                 </MagneticLink>
             </nav>

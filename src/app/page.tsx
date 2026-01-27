@@ -14,9 +14,9 @@ const works = [
     id: 1,
     title: 'Nomada',
     category: 'Web Platform',
-    year: '2024',
-    description: 'An AI-powered image resource platform for graphic designers. Featuring a personalized AI system that learns your style preferences, delivering tailored image suggestions and custom AI-generated visuals that evolve with your creative taste.',
-    services: ['Product Design', 'AI Integration', 'UX/UI Design', 'Full-Stack Development'],
+    year: '7 - 2025',
+    description: 'A visually immersive platform designed to elevate the creative workflow. Nomada merges a minimalist, gallery-style aesthetic with robust functionality, featuring a smart algorithm that curates high-fidelity assets based on your interactions.',
+    services: ['UX UI Design', 'Full Stack Development', 'Product Design'],
     mediaType: 'video',
     src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768811792/nomada_ggjy78.mov',
     poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_5,f_jpg,q_90/v1768811792/nomada_ggjy78.jpg',
@@ -24,10 +24,10 @@ const works = [
   {
     id: 2,
     title: 'Eternal',
-    category: 'Immersive Experience',
-    year: '2024',
-    description: 'A cinematic digital journey exploring the concept of infinite loops and temporal distortion. This project seeks to bridge the gap between static imagery and fluid motion, creating a meditative visual experience.',
-    services: ['Creative Direction', '3D Motion', 'Sound Design', 'WebGL'],
+    category: 'E-commerce',
+    year: '3 - 2025',
+    description: "A modern e-commerce platform specializing in premium artificial trees. 'Eternal' showcases hyper-realistic foliage dynamics and interactive petal particles with real-time physics that float and react to user interaction, bringing nature's movement into the digital space.",
+    services: ['3D Motion', 'UX UI Design', 'Ecommerce', 'Full Stack Development'],
     mediaType: 'video',
     src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768812525/Eternal_b13d4h.mp4',
     poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_20,f_jpg,q_90/v1768812525/Eternal_b13d4h.jpg',
@@ -35,10 +35,10 @@ const works = [
   {
     id: 3,
     title: 'Lumina',
-    category: 'Interactive Light',
-    year: '2024',
-    description: 'An experimental study on light, shadow, and perception. "Lumina" utilizes real-time raytracing techniques to create an interactive environment where light reacts dynamically to user input and environmental variables.',
-    services: ['Interaction Design', 'Shaders', 'Performance', 'Creative Coding'],
+    category: 'E-commerce',
+    year: '05 - 2025',
+    description: 'A minimalist furniture e-commerce experience designed as an interactive portfolio. It features a physics-enabled 3D environment and a dynamic gallery sphere that reacts fluidly to cursor interactions, redefining digital product showcasing.',
+    services: ['UX UI Design', 'Ecommerce', 'Full Stack Development', '3d interactions'],
     mediaType: 'video',
     src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768812462/Lumina_sd7xhc.mp4',
     poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_5,f_jpg,q_90/v1768812462/Lumina_sd7xhc.jpg',
@@ -87,7 +87,7 @@ export default function Home() {
 
   // Map vertical 0-1 progress to horizontal movement
   // Adjust output range based on total width of horizontal content
-  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-85%"]);
+  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-81%"]);
 
   // Parallax Transforms
   const riggsX = useTransform(scrollYProgress, [0, 0.2], ["0%", "40%"]); // Moves slower
@@ -110,8 +110,6 @@ export default function Home() {
   useEffect(() => {
     if (selectedWorkId) {
       document.body.style.overflow = 'hidden';
-      // Create a style element to hide scrollbar without layout shift if needed, 
-      // but simple overflow: hidden is usually fine for lenis.
     } else {
       document.body.style.overflow = '';
     }
@@ -119,6 +117,17 @@ export default function Home() {
       document.body.style.overflow = '';
     };
   }, [selectedWorkId]);
+
+  // Handle Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedWorkId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     // This container defines the total SCROLL HEIGHT (Vertical)
@@ -213,15 +222,15 @@ export default function Home() {
                 <div className="max-w-4xl px-20 relative pointer-events-auto">
                   <h2 className="text-5xl md:text-7xl leading-[1.1] font-medium text-gray-200 -tracking-[0.04em] mb-6">Who.</h2>
                   <h2 className="text-5xl md:text-7xl leading-[1.1] font-medium text-black mix-blend-hard-light -tracking-[0.04em] relative z-10">
-                    Web & App Developer crafting <span className="font-serif text-accent italic">modern</span> digital experiences with <span className="text-accent/80">clean code</span> and <span className="text-accent/80">pixel-perfect</span> design.
+                    Web & App Developer crafting <span className="font-serif text-accent italic">modern</span> digital experiences with clean code and pixel-perfect design.
                   </h2>
                   <div className="mt-20 flex gap-4 items-center pl-2">
                     <motion.div
-                      className="w-2 h-2 bg-black rounded-full"
+                      className="w-2 h-2 bg-accent rounded-full"
                       animate={{ scale: [1, 1.5, 1] }}
                       transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     />
-                    <span className="uppercase tracking-widest text-xs text-gray-500">Based in Castellón, Spain. Open to freelance projects.</span>
+                    <span className="uppercase tracking-widest text-xs text-gray-500">Based in <span className="text-accent">Castellón, Spain.</span> Open to freelance projects.</span>
                   </div>
                 </div>
               </Slide>
@@ -282,10 +291,10 @@ export default function Home() {
                       {/* Content Below */}
                       <div className="flex justify-between items-start mt-8 border-t border-black/10 pt-6">
                         <div>
-                          <span className="text-xs font-mono mb-2 block text-gray-400">0{index + 1} / {work.year}</span>
+                          <span className="text-xs font-mono mb-2 block text-accent">0{index + 1} / {work.year}</span>
                           <h3 className="text-4xl md:text-6xl font-medium tracking-tighter uppercase group-hover:italic transition-all duration-300 font-serif">{work.title}</h3>
                         </div>
-                        <span className="text-sm uppercase tracking-widest border border-gray-200 px-4 py-1 rounded-full">{work.category}</span>
+                        <span className="text-sm uppercase tracking-widest border border-accent text-accent px-4 py-1 rounded-full">{work.category}</span>
                       </div>
                     </div>
                   </Slide>
@@ -293,15 +302,15 @@ export default function Home() {
               })}
 
               {/* 04. Contact / Footer Slide */}
-              <Slide className="w-[100vw] bg-transparent text-black relative shrink-0 flex items-center justify-center pointer-events-none">
-                <div className="flex flex-col items-center justify-center text-center pointer-events-auto">
-                  <h2 className="text-[18vw] leading-[0.8] font-bold uppercase tracking-tighter mb-12 hover:italic transition-all cursor-pointer font-serif">
+              <Slide className="w-screen bg-transparent text-black relative shrink-0 flex items-center justify-center pointer-events-none">
+                <div className="w-full flex flex-col items-center justify-center text-center pointer-events-auto">
+                  <h2 className="text-[18vw] leading-[0.8] font-bold uppercase tracking-tighter mb-12 font-serif">
                     Let's<br /><span className="font-serif text-accent italic">Talk</span>
                   </h2>
                   <div className="flex gap-20 text-lg uppercase tracking-widest">
-                    <a href="mailto:adriangarciagarcia.dev@gmail.com" className="hover:text-accent hover:decoration-accent hover:line-through decoration-2 transition-colors">Email</a>
-                    <a href="https://instagram.com/riggscorner" className="hover:text-accent hover:decoration-accent hover:line-through decoration-2 transition-colors">Instagram</a>
-                    <a href="https://linkedin.com/in/adriangarciagarcia" className="hover:text-accent hover:decoration-accent hover:line-through decoration-2 transition-colors">LinkedIn</a>
+                    <a href="mailto:adriangarciagarcia.dev@gmail.com" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">Email</a>
+                    <a href="https://instagram.com/riggscorner" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">Instagram</a>
+                    <a href="https://linkedin.com/in/adriangarciagarcia" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">LinkedIn</a>
                   </div>
                   <p className="absolute bottom-10 text-gray-400 text-xs tracking-widest uppercase">© 2025 Adrián García</p>
                 </div>
@@ -399,7 +408,7 @@ export default function Home() {
                             hidden: { y: "100%" },
                             visible: { y: 0, transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] } }
                           }}>
-                            <span className="text-sm font-mono text-gray-400 mb-4 block">0{work.id} — {work.year}</span>
+                            <span className="text-sm font-mono text-accent mb-4 block">0{work.id} — {work.year}</span>
                             <h1 className="text-8xl md:text-9xl font-serif tracking-tighter leading-none">{work.title}</h1>
                           </motion.div>
                         </div>
@@ -410,7 +419,7 @@ export default function Home() {
                           }}
                           className="text-right"
                         >
-                          <span className="text-sm uppercase tracking-widest border border-accent/20 text-accent px-5 py-1.5 rounded-full">{work.category}</span>
+                          <span className="text-sm uppercase tracking-widest border border-accent text-accent px-5 py-1.5 rounded-full">{work.category}</span>
                         </motion.div>
                       </div>
 
@@ -420,8 +429,7 @@ export default function Home() {
                             hidden: { opacity: 0, y: 20 },
                             visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] } }
                           }}>
-                            <p className="text-sm uppercase tracking-widest text-accent mb-4">Tech Stack</p>
-                            <ul className="text-sm space-y-1.5 font-medium leading-relaxed">
+                            <ul className="text-sm space-y-1.5 font-medium leading-relaxed text-accent">
                               {/* Dynamic Tech Stack List */}
                               {work.services?.map((service, i) => (
                                 <li key={i}>{service}</li>
