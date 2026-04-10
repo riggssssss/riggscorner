@@ -10,8 +10,8 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 255, 255, 255;
+  --background-start-rgb: 253, 246, 247;
+  --background-end-rgb: 253, 246, 247;
 }
 
 * {
@@ -20,7 +20,8 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-start-rgb));
+  background: linear-gradient(160deg, #fdf6f7 0%, #f8eef0 50%, #f3e6e9 100%);
+  min-height: 100vh;
   font-family: var(--font-sans);
   /* Hide scrollbar for clean look but allow scrolling */
   scrollbar-width: none;
@@ -143,4 +144,17 @@ button:focus-visible {
 .line-animate {
   transform-origin: left;
   animation: lineExpand 1s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+/* Hide Next.js Dev Tools / Vercel Toolbar */
+vercel-login-banner,
+vercel-toolbar,
+.vercel-toolbar,
+#vercel-toolbar,
+[data-nextjs-toast] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -9999 !important;
 }

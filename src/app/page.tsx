@@ -141,9 +141,9 @@ export default function Home() {
 
 
       {/* Sticky Viewport Wrapper */}
-      <div className="sticky top-0 h-screen overflow-hidden bg-white">
+      <div className="sticky top-0 h-screen overflow-hidden">
         <div
-          className="w-full h-full bg-white flex items-center overflow-hidden"
+          className="w-full h-full flex items-center overflow-hidden"
         >
 
           {/* Interactive Curtain Background - Only visible in first section */}
@@ -174,55 +174,62 @@ export default function Home() {
 
               {/* 01. Hero Slide */}
               <Slide className="w-[100vw] bg-transparent relative shrink-0 z-50 pointer-events-none">
-                <div className="absolute inset-0 flex flex-col justify-end pb-20 px-6 md:px-20 pointer-events-none">
-                  {/* The Text Groups */}
+                <div className="absolute inset-0 flex flex-col justify-between pb-20 pt-24 px-6 md:px-20 pointer-events-none">
+                  {/* Top — Name & role */}
                   <motion.div
-                    style={{ x: riggsX }}
+                    className="flex flex-col gap-1"
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 1, delay: 0.3, ease: [0.76, 0, 0.24, 1] }}
+                    style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
                   >
+                    <span className="text-xs uppercase tracking-widest text-gray-400">Adrián García</span>
+                    <span className="text-xs uppercase tracking-widest" style={{ color: '#c98a97' }}>UI/UX Designer · Frontend Developer</span>
+                  </motion.div>
+
+                  {/* Bottom — tagline + info grid */}
+                  <div className="flex flex-col gap-8">
                     <motion.h1
-                      className="text-[14vw] leading-[0.8] font-bold tracking-tighter font-serif pb-2 text-black mix-blend-hard-light pointer-events-auto"
-                      /* clip-path removed here as requested in previous turn for 'riggs' */
-                      initial={{ opacity: 0, y: 100 }}
+                      className="text-[5vw] leading-[1] font-normal tracking-tight pointer-events-auto"
+                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}
+                      initial={{ opacity: 0, y: 60 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 1.2, ease: [0.76, 0, 0.24, 1] }}
                     >
-                      riggs
+                      design build & repeat
                     </motion.h1>
-                  </motion.div>
-                  <motion.div
-                    style={{ x: cornerX }}
-                  >
-                    <motion.h1
-                      className="text-[14vw] leading-[0.8] font-bold tracking-tighter ml-[10vw] font-sans pb-2 text-black mix-blend-hard-light pointer-events-auto"
-                      style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 85%)' }}
-                      initial={{ opacity: 0, y: 100 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 1.2, delay: 0.1, ease: [0.76, 0, 0.24, 1] }}
+
+                    {/* Info row */}
+                    <motion.div
+                      className="flex gap-16 pointer-events-auto"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 1, delay: 0.8 }}
+                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
                     >
-                      corner
-                    </motion.h1>
-                  </motion.div>
-
-
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1.5, duration: 1 }}
-                    className="absolute bottom-8 left-10 flex gap-4 items-center uppercase text-sm tracking-widest text-gray-400 z-[70] pointer-events-auto"
-                  >
-                    <span>(Scroll)</span>
-                    <div className="h-[1px] w-24 bg-gray-400"></div>
-                  </motion.div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] uppercase tracking-widest text-gray-400">Based in</span>
+                        <span className="text-sm text-gray-700">Castellón, Spain</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] uppercase tracking-widest text-gray-400">Available for</span>
+                        <span className="text-sm text-gray-700">Freelance · Full-time</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] uppercase tracking-widest text-gray-400">Contact</span>
+                        <span className="text-sm text-gray-700">adrian2000gg@gmail.com</span>
+                      </div>
+                    </motion.div>
+                  </div>
                 </div>
               </Slide>
 
               {/* 02. Introduction Slide */}
               <Slide className="w-[80vw] bg-transparent relative shrink-0 flex items-center pointer-events-none">
                 <div className="max-w-4xl px-20 relative pointer-events-auto">
-                  <h2 className="text-5xl md:text-7xl leading-[1.1] font-medium text-gray-200 -tracking-[0.04em] mb-6">Who.</h2>
-                  <h2 className="text-5xl md:text-7xl leading-[1.1] font-medium text-black mix-blend-hard-light -tracking-[0.04em] relative z-10">
-                    Web & App Developer crafting <span className="font-serif text-accent italic">modern</span> digital experiences with clean code and pixel-perfect design.
+                  <h2 className="text-3xl md:text-5xl leading-[1.1] font-normal -tracking-[0.03em] mb-6" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}>Who.</h2>
+                  <h2 className="text-3xl md:text-5xl leading-[1.2] font-normal text-black mix-blend-hard-light -tracking-[0.03em] relative z-10" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                    UI/UX Designer & Frontend Developer crafting <span className="text-accent italic" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>thoughtful</span> digital experiences — where aesthetics meet precision.
                   </h2>
                   <div className="mt-20 flex gap-4 items-center pl-2">
                     <motion.div
@@ -235,7 +242,71 @@ export default function Home() {
                 </div>
               </Slide>
 
-              {/* 03. Works Slides - REWORKED */}
+              {/* 03. About Slide */}
+              <Slide className="w-[90vw] bg-transparent relative shrink-0 flex items-center pointer-events-none">
+                <div className="w-full px-20 grid grid-cols-[1fr_1fr_1fr] gap-16 pointer-events-auto" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                  {/* Col 1 — Intro */}
+                  <div className="flex flex-col justify-center">
+                    <p className="text-xs uppercase tracking-widest text-accent mb-4">Adrián García</p>
+                    <h3 className="text-[2.2vw] font-normal leading-[1.15] text-black -tracking-[0.02em] mb-6">
+                      Product Designer <span className="text-[#c98a97]">+</span> Frontend Developer based in Castellón, Spain
+                    </h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      Full Stack developer with a strong frontend focus. I build clear, functional and visually coherent interfaces — where logic meets aesthetics.
+                    </p>
+                  </div>
+
+                  {/* Col 2 — Skills & Languages */}
+                  <div className="flex flex-col justify-center gap-10">
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-accent mb-4">Stack</p>
+                      <div className="flex flex-wrap gap-2">
+                        {['JavaScript', 'TypeScript', 'React', 'Next.js', 'Kotlin', 'Java', 'SQL', 'Figma', 'CSS'].map(s => (
+                          <span key={s} className="text-xs border border-[#ecd8db] text-gray-600 px-3 py-1 rounded-full">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-accent mb-4">Languages</p>
+                      <div className="flex flex-col gap-1 text-sm text-gray-600">
+                        <span>Spanish — Native</span>
+                        <span>Valencian — C1</span>
+                        <span>English — B2</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Col 3 — Education & Contact */}
+                  <div className="flex flex-col justify-center gap-10">
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-accent mb-4">Education</p>
+                      <div className="flex flex-col gap-3 text-sm text-gray-600">
+                        <div>
+                          <p className="text-black font-normal">Multiplatform App Development</p>
+                          <p className="text-xs text-gray-400">2nd year · DAM</p>
+                        </div>
+                        <div>
+                          <p className="text-black font-normal">UX Design Fundamentals</p>
+                          <p className="text-xs text-gray-400">IBM SkillsBuild</p>
+                        </div>
+                        <div>
+                          <p className="text-black font-normal">Music Degree — Guitar</p>
+                          <p className="text-xs text-gray-400">2014–2020 · Mestre Tàrrega</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-accent mb-4">Contact</p>
+                      <div className="flex flex-col gap-1 text-sm text-gray-500">
+                        <span>adrian2000gg@gmail.com</span>
+                        <span>+34 641 211 926</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Slide>
+
+              {/* 04. Works Slides - REWORKED */}
               {works.map((work, index) => {
                 return (
                   <Slide key={work.id} className="w-[85vw] bg-transparent relative shrink-0 flex items-center justify-center px-10 pointer-events-none">
@@ -289,7 +360,7 @@ export default function Home() {
                       </div>
 
                       {/* Content Below */}
-                      <div className="flex justify-between items-start mt-8 border-t border-black/10 pt-6">
+                      <div className="flex justify-between items-start mt-8">
                         <div>
                           <span className="text-xs font-mono mb-2 block text-accent">0{index + 1} / {work.year}</span>
                           <h3 className="text-4xl md:text-6xl font-medium tracking-tighter uppercase group-hover:italic transition-all duration-300 font-serif">{work.title}</h3>

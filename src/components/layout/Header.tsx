@@ -34,12 +34,8 @@ function MagneticLink({
 
     return (
         <Link
-            ref={ref}
             href={href}
             onClick={onClick}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-            data-magnetic
             data-cursor-text="View"
             className={`relative transition-all duration-500 ease-out ${isActive
                 ? 'opacity-100'
@@ -72,29 +68,7 @@ export default function Header() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5, ease: [0.23, 1, 0.32, 1] }}
         >
-            {/* Logo with stagger animation */}
-            <Link
-                href="/"
-                className="group relative overflow-hidden"
-                data-magnetic
-                data-cursor-text="Home"
-            >
-                <motion.span
-                    className="text-xl font-bold tracking-tighter uppercase inline-block"
-                    whileHover={{ y: -30 }}
-                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                >
-                    Adrian Garcia
-                </motion.span>
-                <motion.span
-                    className="text-xl font-bold tracking-tighter uppercase absolute top-0 left-0"
-                    initial={{ y: 30 }}
-                    whileHover={{ y: 0 }}
-                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                >
-                    Adrian Garcia
-                </motion.span>
-            </Link>
+            <div />
 
             {/* Navigation with magnetic effect */}
             <nav className="hidden md:flex gap-10 uppercase text-sm tracking-widest">
