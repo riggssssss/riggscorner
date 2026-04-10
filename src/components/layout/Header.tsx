@@ -36,23 +36,16 @@ function MagneticLink({
         <Link
             href={href}
             onClick={onClick}
-            data-cursor-text="View"
-            className={`relative transition-all duration-500 ease-out ${isActive
-                ? 'opacity-100'
-                : 'opacity-50 hover:opacity-100'
-                }`}
+            className={`relative transition-all duration-300 ease-out ${isActive ? 'text-[#c98a97]' : 'text-gray-400 hover:text-gray-700'}`}
+            style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
         >
             <span className="relative z-10">{children}</span>
-            {/* Animated underline */}
             <motion.span
-                className="absolute -bottom-1 left-0 h-[1px] bg-white origin-left"
+                className="absolute -bottom-1 left-0 h-[1px] origin-left"
+                style={{ width: '100%', backgroundColor: '#c98a97' }}
                 initial={false}
-                animate={{
-                    scaleX: isActive ? 1 : 0,
-                    opacity: isActive ? 1 : 0
-                }}
+                animate={{ scaleX: isActive ? 1 : 0, opacity: isActive ? 1 : 0 }}
                 transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                style={{ width: '100%' }}
             />
         </Link>
     );
@@ -63,15 +56,13 @@ export default function Header() {
 
     return (
         <motion.header
-            className="fixed top-0 left-0 w-full z-40 px-6 md:px-10 py-6 flex justify-between items-center mix-blend-difference text-white"
+            className="fixed top-0 left-0 w-full z-40 px-6 md:px-10 py-6 flex justify-end items-center"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5, ease: [0.23, 1, 0.32, 1] }}
         >
-            <div />
-
-            {/* Navigation with magnetic effect */}
-            <nav className="hidden md:flex gap-10 uppercase text-sm tracking-widest">
+            {/* Navigation */}
+            <nav className="hidden md:flex gap-10 uppercase text-xs tracking-widest" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                 <MagneticLink
                     href="#about"
                     isActive={activeSection === 'about'}

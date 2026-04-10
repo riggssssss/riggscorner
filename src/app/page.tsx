@@ -74,11 +74,11 @@ export default function Home() {
     // 0.35 - 0.85: Work (Covers multiple slides)
     // 0.85 - 1.00: Contact
 
-    if (latest < 0.20) {
+    if (latest < 0.12) {
       setActiveSection('home');
-    } else if (latest >= 0.20 && latest < 0.35) {
+    } else if (latest >= 0.12 && latest < 0.28) {
       setActiveSection('about');
-    } else if (latest >= 0.35 && latest < 0.85) {
+    } else if (latest >= 0.28 && latest < 0.85) {
       setActiveSection('work');
     } else {
       setActiveSection('contact');
@@ -90,8 +90,17 @@ export default function Home() {
   const x = useTransform(scrollYProgress, [0, 1], ["0%", "-81%"]);
 
   // Parallax Transforms
-  const riggsX = useTransform(scrollYProgress, [0, 0.2], ["0%", "40%"]); // Moves slower
-  const cornerX = useTransform(scrollYProgress, [0, 0.2], ["0%", "50%"]); // Moves slighly faster
+  const riggsX = useTransform(scrollYProgress, [0, 0.2], ["0%", "40%"]);
+  const cornerX = useTransform(scrollYProgress, [0, 0.2], ["0%", "50%"]);
+
+  // Hero parallax — subtle vertical drift on scroll
+  const heroTaglineY = useTransform(scrollYProgress, [0, 0.15], ["0%", "-18%"]);
+  const heroTopY = useTransform(scrollYProgress, [0, 0.15], ["0%", "-10%"]);
+  const heroInfoY = useTransform(scrollYProgress, [0, 0.15], ["0%", "-6%"]);
+
+  // Who slide — driven directly by scrollYProgress, no state
+  const whoOpacity = useTransform(scrollYProgress, [0.10, 0.16, 0.24, 0.30], [0, 1, 1, 0]);
+  const whoY = useTransform(scrollYProgress, [0.10, 0.16, 0.24, 0.30], [40, 0, 0, -40]);
 
   // Parallax for work images - moves slightly right as container moves left
   const parallaxX = useTransform(scrollYProgress, [0, 1], ["-10%", "10%"]);
@@ -181,7 +190,7 @@ export default function Home() {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1, delay: 0.3, ease: [0.76, 0, 0.24, 1] }}
-                    style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
+                    style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', y: heroTopY }}
                   >
                     <span className="text-xs uppercase tracking-widest text-gray-400">Adrián García</span>
                     <span className="text-xs uppercase tracking-widest" style={{ color: '#c98a97' }}>UI/UX Designer · Frontend Developer</span>
@@ -191,7 +200,7 @@ export default function Home() {
                   <div className="flex flex-col gap-8">
                     <motion.h1
                       className="text-[5vw] leading-[1] font-normal tracking-tight pointer-events-auto"
-                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}
+                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97', y: heroTaglineY }}
                       initial={{ opacity: 0, y: 60 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 1.2, ease: [0.76, 0, 0.24, 1] }}
@@ -205,7 +214,7 @@ export default function Home() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 1, delay: 0.8 }}
-                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
+                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', y: heroInfoY }}
                     >
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] uppercase tracking-widest text-gray-400">Based in</span>
@@ -227,86 +236,37 @@ export default function Home() {
               {/* 02. Introduction Slide */}
               <Slide className="w-[80vw] bg-transparent relative shrink-0 flex items-center pointer-events-none">
                 <div className="max-w-4xl px-20 relative pointer-events-auto">
-                  <h2 className="text-3xl md:text-5xl leading-[1.1] font-normal -tracking-[0.03em] mb-6" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}>Who.</h2>
-                  <h2 className="text-3xl md:text-5xl leading-[1.2] font-normal text-black mix-blend-hard-light -tracking-[0.03em] relative z-10" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-                    UI/UX Designer & Frontend Developer crafting <span className="text-accent italic" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>thoughtful</span> digital experiences — where aesthetics meet precision.
-                  </h2>
-                  <div className="mt-20 flex gap-4 items-center pl-2">
+                  <motion.div style={{ opacity: whoOpacity, y: whoY }}>
+                    <h2
+                      className="text-3xl md:text-5xl leading-[1.1] font-normal -tracking-[0.03em] mb-6"
+                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}
+                    >
+                      Who.
+                    </h2>
+                    <h2
+                      className="text-3xl md:text-5xl leading-[1.2] font-normal text-black -tracking-[0.03em] relative z-10"
+                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
+                    >
+                      UI/UX Designer & Frontend Developer crafting <span className="text-accent italic">thoughtful</span> digital experiences — where aesthetics meet precision.
+                    </h2>
+                  </motion.div>
+                  <motion.div
+                    className="mt-16 flex gap-4 items-center pl-2"
+                    style={{ opacity: whoOpacity }}
+                  >
                     <motion.div
                       className="w-2 h-2 bg-accent rounded-full"
                       animate={{ scale: [1, 1.5, 1] }}
                       transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     />
-                    <span className="uppercase tracking-widest text-xs text-gray-500">Based in <span className="text-accent">Castellón, Spain.</span> Open to freelance projects.</span>
-                  </div>
+                    <span className="uppercase tracking-widest text-xs text-gray-500" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                      Based in <span className="text-accent">Castellón, Spain.</span> Open to freelance projects.
+                    </span>
+                  </motion.div>
                 </div>
               </Slide>
 
-              {/* 03. About Slide */}
-              <Slide className="w-[90vw] bg-transparent relative shrink-0 flex items-center pointer-events-none">
-                <div className="w-full px-20 grid grid-cols-[1fr_1fr_1fr] gap-16 pointer-events-auto" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-                  {/* Col 1 — Intro */}
-                  <div className="flex flex-col justify-center">
-                    <p className="text-xs uppercase tracking-widest text-accent mb-4">Adrián García</p>
-                    <h3 className="text-[2.2vw] font-normal leading-[1.15] text-black -tracking-[0.02em] mb-6">
-                      Product Designer <span className="text-[#c98a97]">+</span> Frontend Developer based in Castellón, Spain
-                    </h3>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                      Full Stack developer with a strong frontend focus. I build clear, functional and visually coherent interfaces — where logic meets aesthetics.
-                    </p>
-                  </div>
-
-                  {/* Col 2 — Skills & Languages */}
-                  <div className="flex flex-col justify-center gap-10">
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-accent mb-4">Stack</p>
-                      <div className="flex flex-wrap gap-2">
-                        {['JavaScript', 'TypeScript', 'React', 'Next.js', 'Kotlin', 'Java', 'SQL', 'Figma', 'CSS'].map(s => (
-                          <span key={s} className="text-xs border border-[#ecd8db] text-gray-600 px-3 py-1 rounded-full">{s}</span>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-accent mb-4">Languages</p>
-                      <div className="flex flex-col gap-1 text-sm text-gray-600">
-                        <span>Spanish — Native</span>
-                        <span>Valencian — C1</span>
-                        <span>English — B2</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Col 3 — Education & Contact */}
-                  <div className="flex flex-col justify-center gap-10">
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-accent mb-4">Education</p>
-                      <div className="flex flex-col gap-3 text-sm text-gray-600">
-                        <div>
-                          <p className="text-black font-normal">Multiplatform App Development</p>
-                          <p className="text-xs text-gray-400">2nd year · DAM</p>
-                        </div>
-                        <div>
-                          <p className="text-black font-normal">UX Design Fundamentals</p>
-                          <p className="text-xs text-gray-400">IBM SkillsBuild</p>
-                        </div>
-                        <div>
-                          <p className="text-black font-normal">Music Degree — Guitar</p>
-                          <p className="text-xs text-gray-400">2014–2020 · Mestre Tàrrega</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-accent mb-4">Contact</p>
-                      <div className="flex flex-col gap-1 text-sm text-gray-500">
-                        <span>adrian2000gg@gmail.com</span>
-                        <span>+34 641 211 926</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Slide>
-
-              {/* 04. Works Slides - REWORKED */}
+              {/* 03. Works Slides */}
               {works.map((work, index) => {
                 return (
                   <Slide key={work.id} className="w-[85vw] bg-transparent relative shrink-0 flex items-center justify-center px-10 pointer-events-none">
