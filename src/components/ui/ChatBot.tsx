@@ -442,6 +442,7 @@ function MessageContent({ msg, isNew, onContactSent }: { msg: Message; isNew: bo
 // ── Main component ────────────────────────────────────────────────────────
 export default function ChatBot() {
   const [isOpen, setIsOpen]         = useState(false);
+  const [isMorphing, setIsMorphing] = useState(false);
   const [ready, setReady]           = useState(false);
   const [messages, setMessages]     = useState<Message[]>([INITIAL_MESSAGE]);
   const [newIdx, setNewIdx]         = useState<number | null>(null);
@@ -499,12 +500,27 @@ export default function ChatBot() {
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages, loading, ready]);
 
-  const handleExpandComplete = () => {
-    if (isOpen) { setReady(true); setTimeout(() => inputRef.current?.focus(), 50); }
+  const handleOpen = () => {
+    setReady(false);
+    setIsMorphing(true);
+    setTimeout(() => {
+      setIsMorphing(false);
+      setIsOpen(true);
+      setTimeout(() => {
+        setReady(true);
+        inputRef.current?.focus();
+      }, 560);
+    }, 340);
   };
 
-  const handleOpen  = () => { setReady(false); setIsOpen(true); };
-  const handleClose = () => { setReady(false); setIsOpen(false); };
+  const handleClose = () => {
+    setReady(false);
+    setIsMorphing(true);
+    setTimeout(() => {
+      setIsMorphing(false);
+      setIsOpen(false);
+    }, 340);
+  };
 
   const handleRestart = async () => {
     setRestarting(true);
@@ -624,17 +640,17 @@ export default function ChatBot() {
       <motion.div
         initial={false}
         animate={{
-          width: isOpen ? W_OPEN : W_CLOSED,
-          height: isOpen ? hOpen : H_CLOSED,
-          borderRadius: isOpen ? 24 : 999,
+          width:        isMorphing ? 44 : isOpen ? W_OPEN  : W_CLOSED,
+          height:       isMorphing ? 44 : isOpen ? hOpen   : H_CLOSED,
+          borderRadius: isMorphing ? 999 : isOpen ? 24 : 999,
         }}
         transition={{
-          width:        { duration: 0.40, delay: isOpen ? 0 : 0.40,   ease: [0.76, 0, 0.24, 1] },
-          height:       { duration: 0.46, delay: isOpen ? 0.34 : 0,    ease: [0.76, 0, 0.24, 1] },
-          borderRadius: { duration: 0.15, delay: isOpen ? 0.34 : 0.40, ease: [0.76, 0, 0.24, 1] },
+          width:        { duration: isMorphing ? 0.32 : 0.50, delay: isMorphing ? 0 : isOpen ? 0 : 0, ease: [0.76, 0, 0.24, 1] },
+          height:       { duration: isMorphing ? 0.32 : 0.52, delay: isMorphing ? 0 : isOpen ? 0 : 0, ease: [0.76, 0, 0.24, 1] },
+          borderRadius: { duration: 0.20, ease: [0.76, 0, 0.24, 1] },
         }}
-        onAnimationComplete={handleExpandComplete}
-        onClick={!isOpen ? handleOpen : undefined}
+        onAnimationComplete={undefined}
+        onClick={!isOpen && !isMorphing ? handleOpen : undefined}
         style={{
           background: isOpen ? '#2c2c2c' : 'linear-gradient(135deg, #2c2c2c 0%, #3a2e30 60%, #2c2c2c 100%)',
           overflow: 'hidden',
@@ -649,49 +665,70 @@ export default function ChatBot() {
           className="shrink-0 flex items-center px-5"
           style={{ height: H_CLOSED, justifyContent: isOpen ? 'space-between' : 'center' }}
         >
-          {!isOpen && (
-            <motion.div
-              style={{ width: 10, height: 10, borderRadius: '50%', marginRight: 9, flexShrink: 0, position: 'relative', overflow: 'hidden' }}
-              animate={{ scale: [1, 1.28, 0.95, 1.15, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: [0.33, 0, 0.66, 1], repeatDelay: 1.2, times: [0, 0.2, 0.38, 0.55, 1] }}
-            >
+          {/* Dot + text — closed state */}
+          <AnimatePresence mode="wait">
+            {!isOpen && (
               <motion.div
-                style={{ position: 'absolute', inset: 0, borderRadius: '50%' }}
-                animate={{ background: [
-                  'radial-gradient(circle at 30% 30%, #ffffff, #c98a97)',
-                  'radial-gradient(circle at 70% 70%, #c98a97, #ffffff)',
-                  'radial-gradient(circle at 30% 70%, #ffffff, #c98a97)',
-                  'radial-gradient(circle at 30% 30%, #ffffff, #c98a97)',
-                ]}}
-                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            </motion.div>
-          )}
-          {!isOpen ? (
-            <motion.span
-              style={{
-                fontFamily: FONT, fontSize: 14, letterSpacing: '0.08em', whiteSpace: 'nowrap',
-                background: 'linear-gradient(90deg, #ffffff 0%, #ffffff 40%, #d4a0aa 65%, #ffffff 100%)',
-                backgroundSize: '200% 100%',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-              animate={{ backgroundPosition: ['100% 0%', '-100% 0%'] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.5 }}
-            >
-              let&apos;s talk!
-            </motion.span>
-          ) : (
-            <span style={{ fontFamily: FONT, fontSize: 14, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
-              Chat
-            </span>
-          )}
+                key="closed-content"
+                style={{ display: 'flex', alignItems: 'center' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: isMorphing ? 0 : 1 }}
+                exit={{ opacity: 0, transition: { duration: 0.18, ease: 'easeIn' } }}
+                transition={{ opacity: { duration: 0.28, delay: isMorphing ? 0 : 0.45 } }}
+              >
+                {/* Heartbeat dot */}
+                <motion.div
+                  style={{ width: 10, height: 10, borderRadius: '50%', marginRight: 9, flexShrink: 0, position: 'relative', overflow: 'hidden' }}
+                  animate={{ scale: [1, 1.28, 0.95, 1.15, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity, ease: [0.33, 0, 0.66, 1], repeatDelay: 1.2, times: [0, 0.2, 0.38, 0.55, 1] }}
+                >
+                  <motion.div
+                    style={{ position: 'absolute', inset: 0, borderRadius: '50%' }}
+                    animate={{ background: [
+                      'radial-gradient(circle at 30% 30%, #ffffff, #c98a97)',
+                      'radial-gradient(circle at 70% 70%, #c98a97, #ffffff)',
+                      'radial-gradient(circle at 30% 70%, #ffffff, #c98a97)',
+                      'radial-gradient(circle at 30% 30%, #ffffff, #c98a97)',
+                    ]}}
+                    transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                </motion.div>
+                {/* Gradient text */}
+                <motion.span
+                  style={{
+                    fontFamily: FONT, fontSize: 14, letterSpacing: '0.08em', whiteSpace: 'nowrap',
+                    background: 'linear-gradient(90deg, #ffffff 0%, #ffffff 40%, #d4a0aa 65%, #ffffff 100%)',
+                    backgroundSize: '200% 100%',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                  animate={{ backgroundPosition: ['100% 0%', '-100% 0%'] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.5 }}
+                >
+                  let&apos;s talk!
+                </motion.span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <AnimatePresence>
+          {/* Chat label + actions — open state */}
+          <AnimatePresence mode="wait">
             {isOpen && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex items-center gap-0.5">
-                <ActionBtn onClick={e => { e.stopPropagation(); handleRestart(); }} title="New conversation" disabled={loading || restarting}><IconRestart /></ActionBtn>
-                <ActionBtn onClick={e => { e.stopPropagation(); handleClose(); }} title="Minimize"><IconMinimize /></ActionBtn>
+              <motion.div
+                key="open-content"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: { duration: 0.18 } }}
+                transition={{ duration: 0.28, delay: 0.55 }}
+              >
+                <span style={{ fontFamily: FONT, fontSize: 14, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
+                  Chat
+                </span>
+                <div className="flex items-center gap-0.5">
+                  <ActionBtn onClick={e => { e.stopPropagation(); handleRestart(); }} title="New conversation" disabled={loading || restarting}><IconRestart /></ActionBtn>
+                  <ActionBtn onClick={e => { e.stopPropagation(); handleClose(); }} title="Minimize"><IconMinimize /></ActionBtn>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
