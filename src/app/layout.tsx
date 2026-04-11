@@ -8,6 +8,7 @@ import Preloader from "@/components/ui/Preloader";
 import PageTransition from "@/components/animations/PageTransition";
 import Header from "@/components/layout/Header";
 import MagneticCursor from "@/components/ui/MagneticCursor";
+import ChatBot from "@/components/ui/ChatBot";
 
 const playfair = Playfair_Display({ subsets: ["latin"], variable: '--font-playfair' });
 
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body className={`${GeistSans.variable} ${GeistMono.variable} ${playfair.variable} font-sans`} suppressHydrationWarning>
         <Preloader />
         <MagneticCursor />
+        <ChatBot />
         <SmoothScroll>
           <Header />
           <PageTransition>

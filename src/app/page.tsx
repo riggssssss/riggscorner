@@ -2,9 +2,8 @@
 
 
 import { motion, useScroll, useTransform, useMotionValueEvent, AnimatePresence } from 'framer-motion';
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Slide from '@/components/ui/Slide';
-import ParallaxImage from '@/components/animations/ParallaxImage';
 import { useNavigationStore } from '@/lib/store';
 import InteractiveCurtain from '@/components/ui/InteractiveCurtain';
 import TimeDisplay from '@/components/ui/TimeDisplay';
@@ -61,7 +60,7 @@ export default function Home() {
 
   // Create a scroll height approximate to (Number of Slides * 100vh) or custom feels
   // This "ghost" height creates the scrollable area
-  const { scrollYProgress, scrollY } = useScroll({
+  const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
   });
@@ -90,8 +89,6 @@ export default function Home() {
   const x = useTransform(scrollYProgress, [0, 1], ["0%", "-81%"]);
 
   // Parallax Transforms
-  const riggsX = useTransform(scrollYProgress, [0, 0.2], ["0%", "40%"]);
-  const cornerX = useTransform(scrollYProgress, [0, 0.2], ["0%", "50%"]);
 
   // Hero parallax — subtle vertical drift on scroll
   const heroTaglineY = useTransform(scrollYProgress, [0, 0.15], ["0%", "-18%"]);
@@ -99,8 +96,8 @@ export default function Home() {
   const heroInfoY = useTransform(scrollYProgress, [0, 0.15], ["0%", "-6%"]);
 
   // Who slide — driven directly by scrollYProgress, no state
-  const whoOpacity = useTransform(scrollYProgress, [0.10, 0.16, 0.24, 0.30], [0, 1, 1, 0]);
-  const whoY = useTransform(scrollYProgress, [0.10, 0.16, 0.24, 0.30], [40, 0, 0, -40]);
+  const whoOpacity = useTransform(scrollYProgress, [0.03, 0.08, 0.26, 0.32], [0, 1, 1, 0]);
+  const whoY = useTransform(scrollYProgress, [0.03, 0.08, 0.26, 0.32], [20, 0, 0, -20]);
 
   // Parallax for work images - moves slightly right as container moves left
   const parallaxX = useTransform(scrollYProgress, [0, 1], ["-10%", "10%"]);
@@ -247,7 +244,7 @@ export default function Home() {
                       className="text-3xl md:text-5xl leading-[1.2] font-normal text-black -tracking-[0.03em] relative z-10"
                       style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
                     >
-                      UI/UX Designer & Frontend Developer crafting <span className="text-accent italic">thoughtful</span> digital experiences — where aesthetics meet precision.
+                      Creative by nature, <span className="text-accent italic">precise</span> by choice — I care about the details others skip.
                     </h2>
                   </motion.div>
                   <motion.div
