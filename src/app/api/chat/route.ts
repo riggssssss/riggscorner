@@ -10,8 +10,7 @@ const SYSTEM_PROMPT = `You are Adrián García's portfolio assistant. You speak 
 About Adrián:
 - Full Stack developer with a strong frontend focus, based in Castellón, Spain
 - Specializes in UI/UX Design and Frontend Development
-- Currently studying Multiplatform App Development (DAM), 2nd year
-- Has a Music Degree (Guitar) from Mestre Tàrrega (2014-2020)
+- Currently studying Computer Engineering (Software Development track), 2nd year
 - Certified in UX Design Fundamentals by IBM SkillsBuild
 - Skills: JavaScript, TypeScript, React, Next.js, Kotlin, Java, SQL, Figma, CSS, Android Studio
 - Languages: Spanish (native), Valencian (C1), English (B2)
@@ -37,13 +36,18 @@ export async function POST(req: NextRequest) {
         { role: 'system', content: SYSTEM_PROMPT },
         ...messages,
       ],
-      max_tokens: 200,
+      max_tokens: 400,
       temperature: 0.7,
     });
 
-    const content = completion.choices[0]?.message?.content || '';
+    const content = (completion.choices[0]?.message?.content || '').trim();
+    if (!content) {
+      return NextResponse.json({ error: 'Empty response from model' }, { status: 500 });
+    }
     return NextResponse.json({ content });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to get response' }, { status: 500 });
+    console.error('[chat/route]', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -127,12 +127,20 @@ export default function Home() {
   // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setSelectedWorkId(null);
-      }
+      if (e.key === 'Escape') setSelectedWorkId(null);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Open project from ChatBot navigation
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: number }>).detail.id;
+      setSelectedWorkId(id);
+    };
+    window.addEventListener('open-project', handler);
+    return () => window.removeEventListener('open-project', handler);
   }, []);
 
   return (
@@ -330,12 +338,13 @@ export default function Home() {
               })}
 
               {/* 04. Contact / Footer Slide */}
-              <Slide className="w-screen bg-transparent text-black relative shrink-0 flex items-center justify-center pointer-events-none">
-                <div className="w-full flex flex-col items-center justify-center text-center pointer-events-auto">
-                  <h2 className="text-[18vw] leading-[0.8] font-bold uppercase tracking-tighter mb-12 font-serif">
+              <Slide className="w-screen text-black relative shrink-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 bg-[#f0f0f0] z-0" />
+                <div className="w-full flex flex-col items-center justify-center text-center pointer-events-auto relative z-10">
+                  <h2 className="text-[20vw] leading-[0.8] font-bold uppercase tracking-tighter mb-16 font-serif text-black">
                     Let's<br /><span className="font-serif text-accent italic">Talk</span>
                   </h2>
-                  <div className="flex gap-20 text-lg uppercase tracking-widest">
+                  <div className="flex gap-20 text-xl uppercase tracking-widest text-black">
                     <a href="mailto:adriangarciagarcia.dev@gmail.com" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">Email</a>
                     <a href="https://instagram.com/riggscorner" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">Instagram</a>
                     <a href="https://linkedin.com/in/adriangarciagarcia" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">LinkedIn</a>
