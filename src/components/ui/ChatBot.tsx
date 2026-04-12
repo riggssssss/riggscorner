@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { works } from '@/data/works';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -26,6 +27,21 @@ const W_OPEN   = 420;
 const H_CLOSED = 50;
 const MARGIN   = 32;
 
+const pillLabelVariants = {
+  hidden: {
+    clipPath: 'inset(0 100% 0 0)',
+    transition: { duration: 0.001 },
+  },
+  visible: {
+    clipPath: 'inset(0 0% 0 0)',
+    transition: { duration: 0.38, ease: [0.76, 0, 0.24, 1] },
+  },
+  exitWipe: {
+    clipPath: 'inset(0 0% 0 100%)',
+    transition: { duration: 0.18, ease: [0.76, 0, 0.24, 1] },
+  },
+};
+
 const QUICK: ActionBtn[] = [
   { label: 'Skills',        kind: 'rich', type: 'skills'       },
   { label: 'Projects',      kind: 'rich', type: 'projects'     },
@@ -49,7 +65,6 @@ const SUGGESTIONS: Record<MessageType | 'text', ActionBtn[]> = {
   ],
   projects: [
     { label: 'Nomada',        kind: 'project', id: 1 },
-    { label: 'Eternal',       kind: 'project', id: 2 },
     { label: 'Lumina',        kind: 'project', id: 3 },
     { label: 'Skills',        kind: 'rich', type: 'skills'       },
     { label: 'Get in touch',  kind: 'rich', type: 'contact'      },
@@ -69,16 +84,16 @@ const SUGGESTIONS: Record<MessageType | 'text', ActionBtn[]> = {
 };
 
 const THINKING = [
-  'Thinking...', 'Let me check that...', 'Good question...', 'On it...',
-  'Digging through the archive...', 'Crafting a response...',
-  'Reading between the lines...', 'Almost there...',
+  'Thinking...', 'Good question...', 'On it...',
+  'Let me think...', 'Give me a sec...', 'Almost...',
+  'Processing at human speed...', 'Reading between the lines...',
 ];
 
 const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 const INITIAL_MESSAGE: Message = {
   role: 'assistant',
-  content: "Hey — I'm here to tell you about Adrián and his work. What would you like to know?",
+  content: "Hey! I'm Adrián — glad you stopped by. Ask me anything, I don't bite.",
   ts: now(),
 };
 
@@ -127,8 +142,8 @@ const IconMinimize = () => (
   </svg>
 );
 const IconSend = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 19V5M5 12l7-7 7 7" />
   </svg>
 );
 
@@ -152,24 +167,67 @@ function ThinkingIndicator() {
   );
 }
 
-// ── Animated text with keyword highlights ─────────────────────────────────
+// ── Markdown inline parser ─────────────────────────────────────────────────
+function parseInline(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  // Patterns: **bold**, *italic*, [text](url)
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|\[(.+?)\]\((https?:\/\/[^\s)]+)\))/g;
+  let last = 0, match: RegExpExecArray | null;
+  let idx = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) {
+      nodes.push(<span key={idx++}>{text.slice(last, match.index)}</span>);
+    }
+    if (match[2]) {
+      nodes.push(<strong key={idx++} style={{ color: '#e8b4be', fontWeight: 600 }}>{match[2]}</strong>);
+    } else if (match[3]) {
+      nodes.push(<em key={idx++} style={{ color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>{match[3]}</em>);
+    } else if (match[4] && match[5]) {
+      nodes.push(<a key={idx++} href={match[5]} target="_blank" rel="noopener noreferrer" style={{ color: '#c98a97', textDecoration: 'underline', textUnderlineOffset: 3 }}>{match[4]}</a>);
+    }
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) nodes.push(<span key={idx++}>{text.slice(last)}</span>);
+  return nodes;
+}
+
+// ── Animated text with keyword highlights + markdown ──────────────────────
 function AnimatedText({ text, isNew }: { text: string; isNew: boolean }) {
-  const words = (text || '').split(' ');
+  const lines = (text || '').split('\n');
+  let wordCounter = 0;
   return (
-    <span>
-      {words.map((word, i) => {
-        const clean = word.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ/.]/g, '').toLowerCase();
-        const isPink = KEYWORDS.has(clean);
+    <span style={{ display: 'block' }}>
+      {lines.map((line, li) => {
+        // Unordered list item
+        const isList = /^[-*•]\s+/.test(line);
+        const content = isList ? line.replace(/^[-*•]\s+/, '') : line;
+        const words = content.split(' ');
+        const rendered = (
+          <span key={li} style={{ display: isList ? 'flex' : 'inline', gap: isList ? 6 : 0, alignItems: isList ? 'baseline' : undefined }}>
+            {isList && <span style={{ color: '#c98a97', flexShrink: 0, marginRight: 2 }}>·</span>}
+            {words.map((word, wi) => {
+              const wIdx = wordCounter++;
+              const clean = word.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ/.]/g, '').toLowerCase();
+              const isPink = KEYWORDS.has(clean);
+              return (
+                <motion.span
+                  key={wi}
+                  initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1, y: 0 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: isNew ? wIdx * 0.016 : 0, ease: [0.23, 1, 0.32, 1] }}
+                  style={{ display: 'inline-block', marginRight: '0.28em', color: isPink ? '#c98a97' : 'inherit', fontWeight: isPink ? 500 : 400 }}
+                >
+                  {parseInline(word)}
+                </motion.span>
+              );
+            })}
+          </span>
+        );
         return (
-          <motion.span
-            key={i}
-            initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1, y: 0 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: isNew ? i * 0.018 : 0, ease: [0.23, 1, 0.32, 1] }}
-            style={{ display: 'inline-block', marginRight: '0.28em', color: isPink ? '#c98a97' : 'inherit', fontWeight: isPink ? 500 : 400 }}
-          >
-            {word}
-          </motion.span>
+          <span key={li} style={{ display: isList ? 'block' : 'inline' }}>
+            {rendered}
+            {!isList && li < lines.length - 1 && <br />}
+          </span>
         );
       })}
     </span>
@@ -179,9 +237,21 @@ function AnimatedText({ text, isNew }: { text: string; isNew: boolean }) {
 // ── Rich UI cards ─────────────────────────────────────────────────────────
 
 const SKILLS = [
-  { cat: 'Frontend',   items: ['React', 'Next.js', 'TypeScript', 'CSS'] },
-  { cat: 'Design',     items: ['Figma', 'UI/UX', 'Motion', 'Prototyping'] },
-  { cat: 'Backend',    items: ['Node.js', 'Java', 'Kotlin', 'SQL'] },
+  {
+    cat: 'Frontend',
+    icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
+    items: ['React', 'Next.js', 'TypeScript', 'CSS', 'Framer Motion'],
+  },
+  {
+    cat: 'Design',
+    icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>,
+    items: ['Figma', 'UI/UX', 'Motion', 'Prototyping'],
+  },
+  {
+    cat: 'Backend',
+    icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,
+    items: ['Node.js', 'Java', 'Kotlin', 'SQL'],
+  },
 ];
 
 function SkillsCard({ isNew }: { isNew: boolean }) {
@@ -190,38 +260,58 @@ function SkillsCard({ isNew }: { isNew: boolean }) {
       initial={isNew ? { opacity: 0, y: 10 } : { opacity: 1 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-      style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}
     >
-      <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', fontFamily: FONT, lineHeight: 1.65, margin: 0 }}>
-        I'm a <span style={{ color: '#c98a97' }}>Frontend Developer</span> with a strong eye for <span style={{ color: '#c98a97' }}>design</span> — I build interfaces that are clean, fast and precise.
-      </p>
-      {SKILLS.map((g, gi) => (
-        <motion.div
-          key={g.cat}
-          initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: isNew ? 0.1 + gi * 0.08 : 0 }}
-          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-        >
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', fontFamily: FONT, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{g.cat}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {g.items.map(s => (
-              <span key={s} style={{ fontSize: 13, fontFamily: FONT, color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, padding: '5px 12px' }}>{s}</span>
-            ))}
-          </div>
-        </motion.div>
-      ))}
+      {/* Header */}
+      <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 16 }}>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', fontFamily: FONT, lineHeight: 1.7, margin: 0 }}>
+          Frontend dev with a <span style={{ color: '#e8b4be', fontWeight: 500 }}>design-first</span> approach. I build interfaces that feel right, not just work right.
+        </p>
+      </div>
+
+      {/* Skill groups */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {SKILLS.map((g, gi) => (
+          <motion.div
+            key={g.cat}
+            initial={isNew ? { opacity: 0, x: -8 } : { opacity: 1 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: isNew ? 0.1 + gi * 0.07 : 0 }}
+            style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}
+          >
+            {/* Label col */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 78, paddingTop: 3 }}>
+              <span style={{ color: 'rgba(201,138,151,0.5)' }}>{g.icon}</span>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: FONT, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{g.cat}</span>
+            </div>
+            {/* Tags */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {g.items.map((s, si) => (
+                <motion.span
+                  key={s}
+                  initial={isNew ? { opacity: 0, scale: 0.88 } : { opacity: 1 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2, delay: isNew ? 0.15 + gi * 0.07 + si * 0.04 : 0 }}
+                  style={{
+                    fontSize: 12, fontFamily: FONT, color: 'rgba(255,255,255,0.7)',
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 6, padding: '3px 10px', lineHeight: 1.6,
+                  }}
+                >
+                  {s}
+                </motion.span>
+              ))}
+            </div>
+          </motion.div>
+        ))}
+      </div>
     </motion.div>
   );
 }
 
-const PROJECTS = [
-  { id: 1, name: 'Nomada',  cat: 'Web Platform', year: '2025', desc: 'Smart asset curation with immersive UI.' },
-  { id: 2, name: 'Eternal', cat: 'E-commerce',   year: '2025', desc: '3D physics + petal particles in real-time.' },
-  { id: 3, name: 'Lumina',  cat: 'E-commerce',   year: '2025', desc: 'Physics-enabled 3D furniture experience.' },
-];
-
 function ProjectsCard({ isNew }: { isNew: boolean }) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+
   const openProject = (id: number) => {
     window.dispatchEvent(new CustomEvent('open-project', { detail: { id } }));
   };
@@ -231,47 +321,109 @@ function ProjectsCard({ isNew }: { isNew: boolean }) {
       initial={isNew ? { opacity: 0, y: 10 } : { opacity: 1 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}
+      style={{ display: 'flex', flexDirection: 'column', width: '100%' }}
     >
-      <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', fontFamily: FONT, lineHeight: 1.65, margin: '0 0 10px' }}>
-        Here are my recent <span style={{ color: '#c98a97' }}>projects</span>. Tap one to open it.
+      {/* Header */}
+      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', fontFamily: FONT, lineHeight: 1.65, margin: '0 0 14px' }}>
+        Selected work — tap to expand.
       </p>
-      {PROJECTS.map((p, i) => (
-        <motion.button
-          key={p.name}
-          initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.28, delay: isNew ? 0.08 + i * 0.08 : 0 }}
-          onClick={() => openProject(p.id)}
-          style={{
-            width: '100%', boxSizing: 'border-box',
-            background: 'transparent',
-            border: 'none',
-            borderBottom: i < PROJECTS.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-            padding: '13px 4px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            cursor: 'pointer', textAlign: 'left',
-            transition: 'background 0.15s',
-            borderRadius: 8,
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontFamily: FONT, width: 16 }}>0{i + 1}</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)', fontFamily: FONT, fontWeight: 500 }}>{p.name}</span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: FONT, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{p.cat}</span>
-            </div>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,138,151,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M7 17L17 7M17 7H7M17 7v10"/>
-          </svg>
-        </motion.button>
-      ))}
+
+      {/* Project rows */}
+      <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
+        {works.map((p, i) => (
+          <motion.div
+            key={p.id}
+            initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: isNew ? 0.08 + i * 0.1 : 0 }}
+            style={{ borderBottom: i < works.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+          >
+            {/* Row trigger */}
+            <button
+              onClick={() => setExpanded(expanded === p.id ? null : p.id)}
+              style={{
+                width: '100%', boxSizing: 'border-box', background: expanded === p.id ? 'rgba(201,138,151,0.04)' : 'transparent',
+                border: 'none', padding: '14px 16px', display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left', transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => { if (expanded !== p.id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+              onMouseLeave={e => { if (expanded !== p.id) e.currentTarget.style.background = 'transparent'; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)', fontFamily: FONT, fontVariantNumeric: 'tabular-nums', minWidth: 14 }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: FONT, fontWeight: 500, marginBottom: 2 }}>{p.title}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', fontFamily: FONT, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{p.category}</span>
+                    <span style={{ width: 2, height: 2, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: FONT }}>{p.year}</span>
+                  </div>
+                </div>
+              </div>
+              <motion.span
+                animate={{ rotate: expanded === p.id ? 45 : 0 }}
+                transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+                style={{ display: 'flex', color: expanded === p.id ? '#c98a97' : 'rgba(255,255,255,0.2)', flexShrink: 0, transition: 'color 0.2s' }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </motion.span>
+            </button>
+
+            {/* Expanded panel */}
+            <AnimatePresence initial={false}>
+              {expanded === p.id && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div style={{ padding: '0 16px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: FONT, lineHeight: 1.75, margin: '12px 0 0' }}>
+                      {p.description}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {p.services.map(s => (
+                        <span key={s} style={{ fontSize: 10, fontFamily: FONT, color: 'rgba(201,138,151,0.7)', background: 'rgba(201,138,151,0.07)', border: '1px solid rgba(201,138,151,0.15)', borderRadius: 5, padding: '3px 8px', letterSpacing: '0.03em' }}>{s}</span>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => openProject(p.id)}
+                      style={{
+                        alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6,
+                        background: 'transparent', border: 'none', padding: 0,
+                        fontSize: 12, color: '#c98a97', fontFamily: FONT, cursor: 'pointer',
+                        letterSpacing: '0.02em', opacity: 0.9, transition: 'opacity 0.15s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                      onMouseLeave={e => (e.currentTarget.style.opacity = '0.9')}
+                    >
+                      Open case study
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 17L17 7M17 7H7M17 7v10"/>
+                      </svg>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        ))}
+      </div>
     </motion.div>
   );
 }
+
+const AVAILABILITY = [
+  { label: 'Freelance',  detail: 'Projects, MVPs, redesigns', icon: '◈' },
+  { label: 'Full-time',  detail: 'Remote or Castellón area',  icon: '◈' },
+  { label: 'Part-time',  detail: 'Open to discuss',           icon: '◈' },
+];
 
 function AvailabilityCard({ isNew }: { isNew: boolean }) {
   return (
@@ -279,30 +431,62 @@ function AvailabilityCard({ isNew }: { isNew: boolean }) {
       initial={isNew ? { opacity: 0, y: 10 } : { opacity: 1 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}
     >
-      <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', fontFamily: FONT, lineHeight: 1.65, margin: 0 }}>
-        Currently <span style={{ color: '#c98a97' }}>open</span> to new opportunities — freelance and full-time.
+      {/* Status banner */}
+      <motion.div
+        initial={isNew ? { opacity: 0, y: -4 } : { opacity: 1 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: isNew ? 0.05 : 0 }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(201,138,151,0.07)', border: '1px solid rgba(201,138,151,0.18)',
+          borderRadius: 12, padding: '12px 16px',
+        }}
+      >
+        {/* Pulsing dot */}
+        <div style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
+          <motion.div
+            animate={{ scale: [1, 1.9, 1], opacity: [0.6, 0, 0.6] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#c98a97' }}
+          />
+          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#c98a97' }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontFamily: FONT, fontWeight: 500 }}>Available for work</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: FONT, marginTop: 1 }}>Open to new projects as of 2025</div>
+        </div>
+      </motion.div>
+
+      {/* Mode rows */}
+      <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
+        {AVAILABILITY.map((row, i) => (
+          <motion.div
+            key={row.label}
+            initial={isNew ? { opacity: 0, x: -8 } : { opacity: 1 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.28, delay: isNew ? 0.15 + i * 0.07 : 0 }}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '13px 16px',
+              borderBottom: i < AVAILABILITY.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)', fontFamily: FONT, fontWeight: 500 }}>{row.label}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: FONT }}>{row.detail}</div>
+            </div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(201,138,151,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </motion.div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.28)', fontFamily: FONT, margin: 0, lineHeight: 1.6 }}>
+        Based in Castellón, Spain — working remotely worldwide.
       </p>
-      {[
-        { label: 'Freelance',  detail: 'Projects, MVPs, redesigns' },
-        { label: 'Full-time',  detail: 'Remote or Castellón area' },
-        { label: 'Part-time',  detail: 'Open to discuss' },
-      ].map((row, i) => (
-        <motion.div
-          key={row.label}
-          initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: isNew ? 0.1 + i * 0.08 : 0 }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, width: '100%', boxSizing: 'border-box' }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', fontFamily: FONT }}>{row.label}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.32)', fontFamily: FONT }}>{row.detail}</div>
-          </div>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#c98a97', flexShrink: 0 }} />
-        </motion.div>
-      ))}
     </motion.div>
   );
 }
@@ -310,15 +494,15 @@ function AvailabilityCard({ isNew }: { isNew: boolean }) {
 const inputStyle: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.09)',
-  borderRadius: 12,
-  padding: '13px 16px',
-  fontSize: 14,
-  color: 'rgba(255,255,255,0.88)',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 10,
+  padding: '11px 14px',
+  fontSize: 13,
+  color: 'rgba(255,255,255,0.85)',
   fontFamily: FONT,
   outline: 'none',
-  transition: 'border-color 0.2s',
+  transition: 'border-color 0.2s, background 0.2s',
 };
 
 function ContactCard({ isNew, onSent }: { isNew: boolean; onSent: (msg: string) => void }) {
@@ -330,7 +514,6 @@ function ContactCard({ isNew, onSent }: { isNew: boolean; onSent: (msg: string) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !message) return;
-    // C — open mailto so the message actually reaches Adrián
     const subject = encodeURIComponent(`Message from ${name} via portfolio`);
     const body    = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`);
     window.open(`mailto:adrian2000gg@gmail.com?subject=${subject}&body=${body}`);
@@ -341,13 +524,21 @@ function ContactCard({ isNew, onSent }: { isNew: boolean; onSent: (msg: string) 
   if (sent) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={{ opacity: 1, scale: 1 }}
-        style={{ textAlign: 'center', padding: '28px 0', fontFamily: FONT }}
+        initial={{ opacity: 0, scale: 0.95, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+        style={{ textAlign: 'center', padding: '32px 0', fontFamily: FONT }}
       >
-        <div style={{ fontSize: 26, marginBottom: 10 }}>✦</div>
-        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.9)', marginBottom: 6 }}>Message sent.</div>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.32)' }}>Adrián will get back to you soon.</div>
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: [0.23, 1, 0.32, 1] }}
+          style={{ fontSize: 28, marginBottom: 14, color: '#c98a97' }}
+        >
+          ✦
+        </motion.div>
+        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', marginBottom: 6, fontWeight: 500 }}>Message sent.</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.6 }}>I'll get back to you soon — promise.</div>
       </motion.div>
     );
   }
@@ -358,63 +549,70 @@ function ContactCard({ isNew, onSent }: { isNew: boolean; onSent: (msg: string) 
       initial={isNew ? { opacity: 0, y: 10 } : { opacity: 1 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}
     >
-      <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', fontFamily: FONT, lineHeight: 1.65, margin: '0 0 4px' }}>
-        Drop a message — <span style={{ color: '#c98a97' }}>Adrián</span> will get back to you.
-      </p>
-      {[
-        { placeholder: 'Your name',  value: name,  onChange: setName,  type: 'text'  },
-        { placeholder: 'Your email', value: email, onChange: setEmail, type: 'email' },
-      ].map((f, i) => (
-        <motion.input
-          key={f.placeholder}
-          initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, delay: isNew ? 0.08 + i * 0.07 : 0 }}
-          type={f.type}
-          placeholder={f.placeholder}
-          value={f.value}
-          onChange={e => f.onChange(e.target.value)}
-          required
-          style={inputStyle}
-          onFocus={e => (e.target.style.borderColor = 'rgba(201,138,151,0.45)')}
-          onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.09)')}
-        />
-      ))}
+      {/* Header */}
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.82)', fontFamily: FONT, fontWeight: 500, marginBottom: 3 }}>Get in touch</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.32)', fontFamily: FONT, lineHeight: 1.5 }}>I read every message. Usually reply within 24h.</div>
+      </div>
+
+      {/* Inputs row */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {[
+          { placeholder: 'Name',  value: name,  onChange: setName,  type: 'text'  },
+          { placeholder: 'Email', value: email, onChange: setEmail, type: 'email' },
+        ].map((f, i) => (
+          <motion.input
+            key={f.placeholder}
+            initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: isNew ? 0.08 + i * 0.06 : 0 }}
+            type={f.type}
+            placeholder={f.placeholder}
+            value={f.value}
+            onChange={e => f.onChange(e.target.value)}
+            required
+            style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+            onFocus={e => { e.target.style.borderColor = 'rgba(201,138,151,0.4)'; e.target.style.background = 'rgba(255,255,255,0.06)'; }}
+            onBlur={e =>  { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.background = 'rgba(255,255,255,0.04)'; }}
+          />
+        ))}
+      </div>
+
       <motion.textarea
         initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: isNew ? 0.22 : 0 }}
+        transition={{ duration: 0.25, delay: isNew ? 0.2 : 0 }}
         placeholder="What's on your mind?"
         value={message}
         onChange={e => setMessage(e.target.value)}
         required
-        rows={4}
-        style={{ ...inputStyle, resize: 'none' }}
-        onFocus={e => (e.target.style.borderColor = 'rgba(201,138,151,0.45)')}
-        onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.09)')}
+        rows={3}
+        style={{ ...inputStyle, resize: 'none', lineHeight: 1.6 }}
+        onFocus={e => { e.target.style.borderColor = 'rgba(201,138,151,0.4)'; e.target.style.background = 'rgba(255,255,255,0.06)'; }}
+        onBlur={e =>  { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.background = 'rgba(255,255,255,0.04)'; }}
       />
+
       <motion.button
         type="submit"
         whileTap={{ scale: 0.97 }}
+        initial={isNew ? { opacity: 0, y: 4 } : { opacity: 1 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: isNew ? 0.28 : 0 }}
         style={{
-          width: '100%',
-          background: 'rgba(201,138,151,0.12)',
-          border: '1px solid rgba(201,138,151,0.3)',
-          borderRadius: 12,
-          padding: '14px',
-          fontSize: 14,
-          color: '#c98a97',
-          fontFamily: FONT,
-          cursor: 'pointer',
-          letterSpacing: '0.04em',
-          transition: 'background 0.2s',
+          width: '100%', background: 'rgba(201,138,151,0.1)', border: '1px solid rgba(201,138,151,0.22)',
+          borderRadius: 10, padding: '11px', fontSize: 13, color: '#c98a97', fontFamily: FONT,
+          cursor: 'pointer', letterSpacing: '0.04em', transition: 'background 0.2s, border-color 0.2s',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,138,151,0.22)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(201,138,151,0.12)')}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,138,151,0.18)'; e.currentTarget.style.borderColor = 'rgba(201,138,151,0.35)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,138,151,0.1)'; e.currentTarget.style.borderColor = 'rgba(201,138,151,0.22)'; }}
       >
         Send message
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 19V5M5 12l7-7 7 7" />
+        </svg>
       </motion.button>
     </motion.form>
   );
@@ -442,14 +640,28 @@ function MessageContent({ msg, isNew, onContactSent }: { msg: Message; isNew: bo
 // ── Main component ────────────────────────────────────────────────────────
 export default function ChatBot() {
   const [isOpen, setIsOpen]         = useState(false);
-  const [isMorphing, setIsMorphing] = useState(false);
   const [ready, setReady]           = useState(false);
-  const [messages, setMessages]     = useState<Message[]>([INITIAL_MESSAGE]);
+  const [pillReady, setPillReady]   = useState(true);
+  const [messages, setMessages]     = useState<Message[]>(() => {
+    if (typeof window === 'undefined') return [INITIAL_MESSAGE];
+    try {
+      const saved = localStorage.getItem('chatbot-messages');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Message[];
+        return parsed.length > 0 ? parsed : [INITIAL_MESSAGE];
+      }
+    } catch {}
+    return [INITIAL_MESSAGE];
+  });
   const [newIdx, setNewIdx]         = useState<number | null>(null);
   const [input, setInput]           = useState('');
   const [loading, setLoading]       = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [hOpen, setHOpen]           = useState(600);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [shake, setShake]           = useState(false);
+  const [sending, setSending]       = useState(false);
+  const userScrolledRef = useRef(false);
   const inputRef     = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef    = useRef<HTMLDivElement>(null);
@@ -460,6 +672,23 @@ export default function ChatBot() {
     window.addEventListener('resize', calc);
     return () => window.removeEventListener('resize', calc);
   }, []);
+
+  // Persist conversation
+  useEffect(() => {
+    try { localStorage.setItem('chatbot-messages', JSON.stringify(messages)); } catch {}
+  }, [messages]);
+
+  // Open chat from external event (e.g. scroll end) and show contact card
+  useEffect(() => {
+    const handler = () => {
+      if (!isOpen) {
+        handleOpen();
+        setTimeout(() => sendRich('Get in touch', 'contact'), 900);
+      }
+    };
+    window.addEventListener('open-chat', handler);
+    return () => window.removeEventListener('open-chat', handler);
+  }, [isOpen]);
 
   // Close on outside click
   useEffect(() => {
@@ -492,39 +721,55 @@ export default function ChatBot() {
     };
   }, [isOpen]);
 
-  // B — scroll to bottom using container scrollTop directly (avoids Lenis interference)
+  // Smart auto-scroll — only if user hasn't scrolled up manually
   useEffect(() => {
     if (!ready) return;
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    if (!userScrolledRef.current) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
   }, [messages, loading, ready]);
 
-  const handleOpen = () => {
-    setReady(false);
-    setIsMorphing(true);
-    setTimeout(() => {
-      setIsMorphing(false);
-      setIsOpen(true);
-      setTimeout(() => {
-        setReady(true);
-        inputRef.current?.focus();
-      }, 560);
-    }, 340);
+  // Track scroll + block scroll bleed into page (Lenis listens on window so onWheel React isn't enough)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      userScrolledRef.current = distFromBottom > 80;
+      setShowScrollTop(el.scrollTop > 120);
+    };
+    const onWheel = (e: WheelEvent) => {
+      const atTop    = el.scrollTop === 0 && e.deltaY < 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && e.deltaY > 0;
+      if (atTop || atBottom) e.preventDefault();
+      e.stopPropagation();
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [ready]);
+
+  const handleExpandComplete = () => {
+    if (isOpen) { setReady(true); setTimeout(() => inputRef.current?.focus(), 50); }
   };
 
+  const handleOpen  = () => { setReady(false); setPillReady(false); setIsOpen(true); };
   const handleClose = () => {
     setReady(false);
-    setIsMorphing(true);
-    setTimeout(() => {
-      setIsMorphing(false);
-      setIsOpen(false);
-    }, 340);
+    setIsOpen(false);
+    setPillReady(false);
+    setTimeout(() => setPillReady(true), 820);
   };
 
   const handleRestart = async () => {
     setRestarting(true);
     await new Promise(r => setTimeout(r, 280));
+    try { localStorage.removeItem('chatbot-messages'); } catch {}
     setMessages([INITIAL_MESSAGE]);
     setNewIdx(0);
     setInput('');
@@ -534,6 +779,7 @@ export default function ChatBot() {
 
   // Quick reply with rich UI — no AI call needed
   const sendRich = (label: string, type: MessageType) => {
+    userScrolledRef.current = false;
     const t = now();
     const userMsg: Message = { role: 'user', content: label, ts: t };
     const richMsg: Message = { role: 'assistant', content: '', type, ts: t };
@@ -571,8 +817,8 @@ export default function ChatBot() {
         }, 500);
       });
     } else if (btn.kind === 'project') {
-      const names: Record<number, string> = { 1: 'Nomada', 2: 'Eternal', 3: 'Lumina' };
-      sendNavFeedback(`Opening ${names[btn.id]} →`, () => {
+      const name = works.find(w => w.id === btn.id)?.title ?? 'project';
+      sendNavFeedback(`Opening ${name} →`, () => {
         handleClose();
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('open-project', { detail: { id: btn.id } }));
@@ -583,6 +829,9 @@ export default function ChatBot() {
 
   const send = async (text: string) => {
     if (!text.trim() || loading) return;
+    userScrolledRef.current = false;
+    setSending(true);
+    setTimeout(() => setSending(false), 500);
     const next: Message[] = [...messages, { role: 'user', content: text, ts: now() }];
     setMessages(next);
     setNewIdx(next.length - 1);
@@ -624,7 +873,7 @@ export default function ChatBot() {
       await new Promise(r => setTimeout(r, thinkDelay));
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Something went wrong. Please try again.',
+        content: 'Oops, something broke on my end. Try again?',
         ts: now(),
       }]);
     } finally {
@@ -640,17 +889,17 @@ export default function ChatBot() {
       <motion.div
         initial={false}
         animate={{
-          width:        isMorphing ? 44 : isOpen ? W_OPEN  : W_CLOSED,
-          height:       isMorphing ? 44 : isOpen ? hOpen   : H_CLOSED,
-          borderRadius: isMorphing ? 999 : isOpen ? 24 : 999,
+          width: isOpen ? W_OPEN : W_CLOSED,
+          height: isOpen ? hOpen : H_CLOSED,
+          borderRadius: isOpen ? 24 : 999,
         }}
         transition={{
-          width:        { duration: isMorphing ? 0.32 : 0.50, delay: isMorphing ? 0 : isOpen ? 0 : 0, ease: [0.76, 0, 0.24, 1] },
-          height:       { duration: isMorphing ? 0.32 : 0.52, delay: isMorphing ? 0 : isOpen ? 0 : 0, ease: [0.76, 0, 0.24, 1] },
-          borderRadius: { duration: 0.20, ease: [0.76, 0, 0.24, 1] },
+          width:        { duration: 0.40, delay: isOpen ? 0 : 0.40,   ease: [0.76, 0, 0.24, 1] },
+          height:       { duration: 0.46, delay: isOpen ? 0.34 : 0,    ease: [0.76, 0, 0.24, 1] },
+          borderRadius: { duration: 0.15, delay: isOpen ? 0.34 : 0.40, ease: [0.76, 0, 0.24, 1] },
         }}
-        onAnimationComplete={undefined}
-        onClick={!isOpen && !isMorphing ? handleOpen : undefined}
+        onAnimationComplete={handleExpandComplete}
+        onClick={!isOpen ? handleOpen : undefined}
         style={{
           background: isOpen ? '#2c2c2c' : 'linear-gradient(135deg, #2c2c2c 0%, #3a2e30 60%, #2c2c2c 100%)',
           overflow: 'hidden',
@@ -665,70 +914,44 @@ export default function ChatBot() {
           className="shrink-0 flex items-center px-5"
           style={{ height: H_CLOSED, justifyContent: isOpen ? 'space-between' : 'center' }}
         >
-          {/* Dot + text — closed state */}
-          <AnimatePresence mode="wait">
-            {!isOpen && (
+          {!isOpen && (
+            <motion.div
+              style={{ width: 10, height: 10, borderRadius: '50%', marginRight: 9, flexShrink: 0, position: 'relative', overflow: 'hidden' }}
+              animate={{ scale: [1, 1.28, 0.95, 1.15, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: [0.33, 0, 0.66, 1], repeatDelay: 1.2, times: [0, 0.2, 0.38, 0.55, 1] }}
+            >
               <motion.div
-                key="closed-content"
-                style={{ display: 'flex', alignItems: 'center' }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: isMorphing ? 0 : 1 }}
-                exit={{ opacity: 0, transition: { duration: 0.18, ease: 'easeIn' } }}
-                transition={{ opacity: { duration: 0.28, delay: isMorphing ? 0 : 0.45 } }}
-              >
-                {/* Heartbeat dot */}
-                <motion.div
-                  style={{ width: 10, height: 10, borderRadius: '50%', marginRight: 9, flexShrink: 0, position: 'relative', overflow: 'hidden' }}
-                  animate={{ scale: [1, 1.28, 0.95, 1.15, 1] }}
-                  transition={{ duration: 1.2, repeat: Infinity, ease: [0.33, 0, 0.66, 1], repeatDelay: 1.2, times: [0, 0.2, 0.38, 0.55, 1] }}
-                >
-                  <motion.div
-                    style={{ position: 'absolute', inset: 0, borderRadius: '50%' }}
-                    animate={{ background: [
-                      'radial-gradient(circle at 30% 30%, #ffffff, #c98a97)',
-                      'radial-gradient(circle at 70% 70%, #c98a97, #ffffff)',
-                      'radial-gradient(circle at 30% 70%, #ffffff, #c98a97)',
-                      'radial-gradient(circle at 30% 30%, #ffffff, #c98a97)',
-                    ]}}
-                    transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                  />
-                </motion.div>
-                {/* Gradient text */}
-                <motion.span
-                  style={{
-                    fontFamily: FONT, fontSize: 14, letterSpacing: '0.08em', whiteSpace: 'nowrap',
-                    background: 'linear-gradient(90deg, #ffffff 0%, #ffffff 40%, #d4a0aa 65%, #ffffff 100%)',
-                    backgroundSize: '200% 100%',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
-                  animate={{ backgroundPosition: ['100% 0%', '-100% 0%'] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.5 }}
-                >
-                  let&apos;s talk!
-                </motion.span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                style={{ position: 'absolute', inset: 0, borderRadius: '50%' }}
+                animate={{ background: [
+                  'radial-gradient(circle at 30% 30%, #ffffff, #c98a97)',
+                  'radial-gradient(circle at 70% 70%, #c98a97, #ffffff)',
+                  'radial-gradient(circle at 30% 70%, #ffffff, #c98a97)',
+                  'radial-gradient(circle at 30% 30%, #ffffff, #c98a97)',
+                ]}}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </motion.div>
+          )}
+          <motion.span
+            style={{
+              fontFamily: FONT, fontSize: 14, letterSpacing: '0.08em', whiteSpace: 'nowrap',
+              background: isOpen ? 'none' : 'linear-gradient(90deg, #ffffff 0%, #c98a97 40%, #e8b4be 60%, #ffffff 100%)',
+              backgroundSize: isOpen ? 'auto' : '200% auto',
+              WebkitBackgroundClip: isOpen ? 'unset' : 'text',
+              WebkitTextFillColor: isOpen ? 'rgba(255,255,255,0.9)' : 'transparent',
+              color: isOpen ? 'rgba(255,255,255,0.9)' : 'transparent',
+            }}
+            animate={!isOpen ? { backgroundPosition: ['0% center', '200% center'] } : {}}
+            transition={!isOpen ? { duration: 4, repeat: Infinity, ease: 'linear' } : {}}
+          >
+            {isOpen ? 'Chat' : "let's talk!"}
+          </motion.span>
 
-          {/* Chat label + actions — open state */}
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {isOpen && (
-              <motion.div
-                key="open-content"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, transition: { duration: 0.18 } }}
-                transition={{ duration: 0.28, delay: 0.55 }}
-              >
-                <span style={{ fontFamily: FONT, fontSize: 14, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
-                  Chat
-                </span>
-                <div className="flex items-center gap-0.5">
-                  <ActionBtn onClick={e => { e.stopPropagation(); handleRestart(); }} title="New conversation" disabled={loading || restarting}><IconRestart /></ActionBtn>
-                  <ActionBtn onClick={e => { e.stopPropagation(); handleClose(); }} title="Minimize"><IconMinimize /></ActionBtn>
-                </div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex items-center gap-0.5">
+                <ActionBtn onClick={e => { e.stopPropagation(); handleRestart(); }} title="New conversation" disabled={loading || restarting}><IconRestart /></ActionBtn>
+                <ActionBtn onClick={e => { e.stopPropagation(); handleClose(); }} title="Minimize"><IconMinimize /></ActionBtn>
               </motion.div>
             )}
           </AnimatePresence>
@@ -743,6 +966,7 @@ export default function ChatBot() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
               className="flex flex-col flex-1 min-h-0"
+              style={{ position: 'relative' }}
             >
               <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
 
@@ -751,14 +975,38 @@ export default function ChatBot() {
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto flex flex-col gap-5"
                 style={{ padding: '20px 20px 12px', overscrollBehavior: 'contain' }}
-                onWheel={e => {
-                  const el = e.currentTarget;
-                  const atTop    = el.scrollTop === 0 && e.deltaY < 0;
-                  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && e.deltaY > 0;
-                  if (atTop || atBottom) e.preventDefault();
-                  e.stopPropagation();
-                }}
               >
+                {/* Scroll-to-top */}
+                <AnimatePresence>
+                  {showScrollTop && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ position: 'sticky', top: 0, zIndex: 10, display: 'flex', justifyContent: 'flex-end', marginBottom: -12, pointerEvents: 'none' }}
+                    >
+                      <button
+                        onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+                        style={{
+                          pointerEvents: 'all',
+                          background: 'rgba(44,44,44,0.9)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                          border: '1px solid rgba(255,255,255,0.1)', borderRadius: 999,
+                          padding: '4px 11px 4px 9px', display: 'flex', alignItems: 'center', gap: 5,
+                          cursor: 'pointer', color: 'rgba(255,255,255,0.5)', fontFamily: FONT, fontSize: 11, letterSpacing: '0.04em',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#c98a97'; e.currentTarget.style.borderColor = 'rgba(201,138,151,0.35)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                      >
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                        top
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <AnimatePresence initial={false}>
                   {messages.map((m, i) => (
                     <motion.div
@@ -847,9 +1095,19 @@ export default function ChatBot() {
 
               {/* Input */}
               <div style={{ padding: '14px 20px 18px' }}>
-                <form
-                  onSubmit={e => { e.preventDefault(); send(input); }}
-                  style={{ background: '#444444', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(255,255,255,0.07)', transition: 'border-color 0.2s' }}
+                <motion.form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    if (!input.trim()) {
+                      setShake(true);
+                      setTimeout(() => setShake(false), 500);
+                      return;
+                    }
+                    send(input);
+                  }}
+                  animate={shake ? { x: [0, -6, 6, -5, 5, -3, 3, 0] } : { x: 0 }}
+                  transition={{ duration: 0.45, ease: 'easeInOut' }}
+                  style={{ background: 'rgba(50,50,50,0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(255,255,255,0.07)', transition: 'border-color 0.2s' }}
                   onFocus={e => (e.currentTarget.style.borderColor = 'rgba(201,138,151,0.3)')}
                   onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
                 >
@@ -863,13 +1121,37 @@ export default function ChatBot() {
                   />
                   <motion.button
                     type="submit"
-                    disabled={!input.trim() || loading || restarting}
+                    disabled={loading || restarting}
                     whileTap={input.trim() ? { scale: 0.88 } : {}}
-                    style={{ opacity: input.trim() && !loading && !restarting ? 1 : 0.2, transition: 'opacity 0.2s', background: 'none', border: 'none', cursor: input.trim() ? 'pointer' : 'default', padding: 0, color: '#c98a97', display: 'flex', alignItems: 'center' }}
+                    style={{ opacity: input.trim() && !loading && !restarting ? 1 : 0.25, transition: 'opacity 0.2s', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#c98a97', display: 'flex', alignItems: 'center', overflow: 'hidden', width: 20, height: 20 }}
                   >
-                    <IconSend />
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      {sending ? (
+                        <motion.span
+                          key="sending"
+                          initial={{ y: 0, opacity: 1 }}
+                          animate={{ y: -20, opacity: 0 }}
+                          exit={{ y: 20, opacity: 0 }}
+                          transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }}
+                          style={{ display: 'flex', alignItems: 'center' }}
+                        >
+                          <IconSend />
+                        </motion.span>
+                      ) : (
+                        <motion.span
+                          key="idle"
+                          initial={{ y: 20, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: -20, opacity: 0 }}
+                          transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }}
+                          style={{ display: 'flex', alignItems: 'center' }}
+                        >
+                          <IconSend />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </motion.button>
-                </form>
+                </motion.form>
               </div>
             </motion.div>
           )}

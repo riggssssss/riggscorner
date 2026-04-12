@@ -146,6 +146,27 @@ button:focus-visible {
   animation: lineExpand 1s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 220, 228, 0.0) 20%,
+    rgba(255, 220, 228, 0.6) 50%,
+    rgba(255, 220, 228, 0.0) 80%,
+    transparent 100%
+  );
+  filter: blur(20px);
+  animation: shimmer 2s ease-in-out infinite;
+}
+
 /* Hide Next.js Dev Tools / Vercel Toolbar */
 vercel-login-banner,
 vercel-toolbar,

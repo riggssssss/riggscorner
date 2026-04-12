@@ -7,42 +7,7 @@ import Slide from '@/components/ui/Slide';
 import { useNavigationStore } from '@/lib/store';
 import InteractiveCurtain from '@/components/ui/InteractiveCurtain';
 import TimeDisplay from '@/components/ui/TimeDisplay';
-
-const works = [
-  {
-    id: 1,
-    title: 'Nomada',
-    category: 'Web Platform',
-    year: '7 - 2025',
-    description: 'A visually immersive platform designed to elevate the creative workflow. Nomada merges a minimalist, gallery-style aesthetic with robust functionality, featuring a smart algorithm that curates high-fidelity assets based on your interactions.',
-    services: ['UX UI Design', 'Full Stack Development', 'Product Design'],
-    mediaType: 'video',
-    src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768811792/nomada_ggjy78.mov',
-    poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_5,f_jpg,q_90/v1768811792/nomada_ggjy78.jpg',
-  },
-  {
-    id: 2,
-    title: 'Eternal',
-    category: 'E-commerce',
-    year: '3 - 2025',
-    description: "A modern e-commerce platform specializing in premium artificial trees. 'Eternal' showcases hyper-realistic foliage dynamics and interactive petal particles with real-time physics that float and react to user interaction, bringing nature's movement into the digital space.",
-    services: ['3D Motion', 'UX UI Design', 'Ecommerce', 'Full Stack Development'],
-    mediaType: 'video',
-    src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768812525/Eternal_b13d4h.mp4',
-    poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_20,f_jpg,q_90/v1768812525/Eternal_b13d4h.jpg',
-  },
-  {
-    id: 3,
-    title: 'Lumina',
-    category: 'E-commerce',
-    year: '05 - 2025',
-    description: 'A minimalist furniture e-commerce experience designed as an interactive portfolio. It features a physics-enabled 3D environment and a dynamic gallery sphere that reacts fluidly to cursor interactions, redefining digital product showcasing.',
-    services: ['UX UI Design', 'Ecommerce', 'Full Stack Development', '3d interactions'],
-    mediaType: 'video',
-    src: 'https://res.cloudinary.com/dfedae5mn/video/upload/v1768812462/Lumina_sd7xhc.mp4',
-    poster: 'https://res.cloudinary.com/dfedae5mn/video/upload/so_5,f_jpg,q_90/v1768812462/Lumina_sd7xhc.jpg',
-  },
-];
+import { works } from '@/data/works';
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,14 +30,10 @@ export default function Home() {
     offset: ["start start", "end end"]
   });
 
+  const chatOpenedRef = useRef(false);
+
   // Update active section based on scroll progress
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    // These thresholds should align with the anchor positions defined below
-    // 0.00 - 0.20: Home/Intro
-    // 0.20 - 0.35: About
-    // 0.35 - 0.85: Work (Covers multiple slides)
-    // 0.85 - 1.00: Contact
-
     if (latest < 0.12) {
       setActiveSection('home');
     } else if (latest >= 0.12 && latest < 0.28) {
@@ -82,11 +43,21 @@ export default function Home() {
     } else {
       setActiveSection('contact');
     }
+
+    // Open chatbot when reaching the end
+    if (latest >= 0.995 && !chatOpenedRef.current) {
+      chatOpenedRef.current = true;
+      window.dispatchEvent(new CustomEvent('open-chat'));
+    }
+    // Reset so it can trigger again if user scrolls back and forward
+    if (latest < 0.9) {
+      chatOpenedRef.current = false;
+    }
   });
 
   // Map vertical 0-1 progress to horizontal movement
   // Adjust output range based on total width of horizontal content
-  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-81%"]);
+  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-79.6%"]);
 
   // Parallax Transforms
 
@@ -145,7 +116,7 @@ export default function Home() {
 
   return (
     // This container defines the total SCROLL HEIGHT (Vertical)
-    <div ref={containerRef} className="h-[500vh] relative">
+    <div ref={containerRef} className="h-[540vh] relative">
 
       {/* Invisible Anchors for Navigation */}
       <div id="home" className="absolute top-0 w-full h-px" />
@@ -188,10 +159,10 @@ export default function Home() {
 
               {/* 01. Hero Slide */}
               <Slide className="w-[100vw] bg-transparent relative shrink-0 z-50 pointer-events-none">
-                <div className="absolute inset-0 flex flex-col justify-between pb-20 pt-24 px-6 md:px-20 pointer-events-none">
+                <div className="absolute inset-0 px-6 md:px-20 pointer-events-none">
                   {/* Top — Name & role */}
                   <motion.div
-                    className="flex flex-col gap-1"
+                    className="flex flex-col gap-1 absolute top-8"
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1, delay: 0.3, ease: [0.76, 0, 0.24, 1] }}
@@ -202,7 +173,7 @@ export default function Home() {
                   </motion.div>
 
                   {/* Bottom — tagline + info grid */}
-                  <div className="flex flex-col gap-8">
+                  <div className="absolute bottom-8 left-6 md:left-20 right-6 md:right-20 flex flex-col gap-8">
                     <motion.h1
                       className="text-[5vw] leading-[1] font-normal tracking-tight pointer-events-auto"
                       style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97', y: heroTaglineY }}
@@ -239,34 +210,44 @@ export default function Home() {
               </Slide>
 
               {/* 02. Introduction Slide */}
-              <Slide className="w-[80vw] bg-transparent relative shrink-0 flex items-center pointer-events-none">
-                <div className="max-w-4xl px-20 relative pointer-events-auto">
+              <Slide className="w-[90vw] bg-transparent relative shrink-0 flex items-center pointer-events-none">
+                <div className="w-full px-20 relative pointer-events-auto">
                   <motion.div style={{ opacity: whoOpacity, y: whoY }}>
+
+                    {/* Index label */}
+                    <div className="mb-6">
+                      <h2
+                        className="text-3xl md:text-5xl leading-[1.1] font-normal -tracking-[0.03em]"
+                        style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}
+                      >
+                        Who.
+                      </h2>
+                    </div>
+
+                    {/* Main statement — same size as before */}
                     <h2
-                      className="text-3xl md:text-5xl leading-[1.1] font-normal -tracking-[0.03em] mb-6"
-                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}
-                    >
-                      Who.
-                    </h2>
-                    <h2
-                      className="text-3xl md:text-5xl leading-[1.2] font-normal text-black -tracking-[0.03em] relative z-10"
+                      className="text-3xl md:text-5xl leading-[1.2] font-normal -tracking-[0.03em] mb-12 max-w-3xl"
                       style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
                     >
-                      Creative by nature, <span className="text-accent italic">precise</span> by choice — I care about the details others skip.
+                      Passionate about <span style={{ color: '#c98a97' }} className="italic font-serif">design</span> and typography. I build digital products that feel intuitive, look intentional, and actually work.
                     </h2>
-                  </motion.div>
-                  <motion.div
-                    className="mt-16 flex gap-4 items-center pl-2"
-                    style={{ opacity: whoOpacity }}
-                  >
-                    <motion.div
-                      className="w-2 h-2 bg-accent rounded-full"
-                      animate={{ scale: [1, 1.5, 1] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                    <span className="uppercase tracking-widest text-xs text-gray-500" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-                      Based in <span className="text-accent">Castellón, Spain.</span> Open to freelance projects.
-                    </span>
+
+                    {/* Skills row */}
+                    <div className="flex flex-row flex-wrap items-center gap-x-3 gap-y-0">
+                      {['React', 'Next.js', 'TypeScript', 'Figma', 'Motion', 'Node.js'].map((skill, i, arr) => (
+                        <motion.span
+                          key={skill}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5, delay: 0.1 + i * 0.06, ease: [0.23, 1, 0.32, 1] }}
+                          className="text-xs uppercase tracking-widest text-gray-400 whitespace-nowrap"
+                          style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
+                        >
+                          {skill}{i < arr.length - 1 ? <span className="ml-3 text-gray-300">·</span> : null}
+                        </motion.span>
+                      ))}
+                    </div>
+
                   </motion.div>
                 </div>
               </Slide>
@@ -274,20 +255,20 @@ export default function Home() {
               {/* 03. Works Slides */}
               {works.map((work, index) => {
                 return (
-                  <Slide key={work.id} className="w-[85vw] bg-transparent relative shrink-0 flex items-center justify-center px-10 pointer-events-none">
+                  <Slide key={work.id} className="w-[100vw] bg-transparent relative shrink-0 flex items-center justify-center px-10 pointer-events-none">
                     <div className="w-full max-w-[70vw] h-[80vh] flex flex-col justify-center relative group pointer-events-auto">
 
-                      {/* Video/Image Container - Exact Video Dimensions */}
+                      {/* Video/Image Container */}
                       <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
                         <motion.div
                           ref={(el) => { workRefs.current[work.id] = el; }}
                           className="w-full h-full relative cursor-pointer rounded-2xl overflow-hidden"
                           onClick={() => handleWorkClick(work.id)}
-                          whileHover={{ scale: 0.98 }}
-                          transition={{ duration: 0.4 }}
+                          whileHover={{ scale: 0.985 }}
+                          transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
                         >
-                          <div className="w-full h-full overflow-hidden border border-gray-200 bg-gray-100 relative rounded-2xl">
-                            {/* Media Content - WITH PARALLAX */}
+                          <div className="w-full h-full overflow-hidden bg-gray-100 relative rounded-2xl" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+                            {/* Media */}
                             <motion.div
                               className="w-[120%] h-full relative -left-[10%]"
                               style={{ x: parallaxX }}
@@ -314,10 +295,16 @@ export default function Home() {
                               )}
                             </motion.div>
 
-                            {/* Hover Overlay */}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500 flex items-center justify-center">
-                              <div className="bg-white text-black px-6 py-3 rounded-full opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 text-sm font-bold uppercase tracking-widest shadow-xl">
-                                View Project
+                            {/* Hover overlay — circle + */}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-500 flex items-center justify-center">
+                              <div
+                                className="w-16 h-16 rounded-full border border-white/80 flex items-center justify-center opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-500"
+                                style={{ backdropFilter: 'blur(8px)', background: 'rgba(255,255,255,0.12)' }}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round">
+                                  <line x1="9" y1="2" x2="9" y2="16" />
+                                  <line x1="2" y1="9" x2="16" y2="9" />
+                                </svg>
                               </div>
                             </div>
                           </div>
@@ -325,33 +312,54 @@ export default function Home() {
                       </div>
 
                       {/* Content Below */}
-                      <div className="flex justify-between items-start mt-8">
-                        <div>
-                          <span className="text-xs font-mono mb-2 block text-accent">0{index + 1} / {work.year}</span>
-                          <h3 className="text-4xl md:text-6xl font-medium tracking-tighter uppercase group-hover:italic transition-all duration-300 font-serif">{work.title}</h3>
+                      <div className="flex justify-between items-end mt-7">
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className="text-xs uppercase tracking-widest text-gray-400"
+                            style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
+                          >
+                            {String(index + 1).padStart(2, '0')} — {work.year}
+                          </span>
+                          <h3
+                            className="text-5xl md:text-7xl font-normal tracking-tighter"
+                            style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#1a1a1a' }}
+                          >
+                            {work.title}
+                          </h3>
                         </div>
-                        <span className="text-sm uppercase tracking-widest border border-accent text-accent px-4 py-1 rounded-full">{work.category}</span>
+                        <span
+                          className="text-xs uppercase tracking-widest mb-2"
+                          style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}
+                        >
+                          {work.category}
+                        </span>
                       </div>
                     </div>
                   </Slide>
                 );
               })}
 
-              {/* 04. Contact / Footer Slide */}
-              <Slide className="w-screen text-black relative shrink-0 flex items-center justify-center pointer-events-none">
-                <div className="absolute inset-0 bg-[#f0f0f0] z-0" />
-                <div className="w-full flex flex-col items-center justify-center text-center pointer-events-auto relative z-10">
-                  <h2 className="text-[20vw] leading-[0.8] font-bold uppercase tracking-tighter mb-16 font-serif text-black">
-                    Let's<br /><span className="font-serif text-accent italic">Talk</span>
-                  </h2>
-                  <div className="flex gap-20 text-xl uppercase tracking-widest text-black">
-                    <a href="mailto:adriangarciagarcia.dev@gmail.com" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">Email</a>
-                    <a href="https://instagram.com/riggscorner" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">Instagram</a>
-                    <a href="https://linkedin.com/in/adriangarciagarcia" className="hover:text-accent hover:underline hover:decoration-accent decoration-2 underline-offset-4 transition-colors">LinkedIn</a>
+              {/* 03b. Coming soon slide */}
+              <Slide className="w-[100vw] bg-transparent relative shrink-0 flex items-center justify-start pl-20 pointer-events-none">
+                <div className="h-[80vh] flex flex-col justify-center pointer-events-auto" style={{ width: 'calc(100vw - 500px)' }}>
+                  <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
+                    <div className="w-full h-full rounded-2xl overflow-hidden relative" style={{ background: '#eedde1' }}>
+                      <div className="skeleton-shimmer" />
+                    </div>
                   </div>
-                  <p className="absolute bottom-10 text-gray-400 text-xs tracking-widest uppercase">© 2025 Adrián García</p>
+                  <div className="flex justify-between items-end mt-7">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs uppercase tracking-widest" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#e8c4cc' }}>03 — 2025</span>
+                      <h3 className="text-5xl md:text-7xl font-normal tracking-tighter" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#e0b8c0' }}>
+                        Coming soon
+                      </h3>
+                    </div>
+                  </div>
                 </div>
               </Slide>
+
+              {/* Trailing space so chatbot doesn't overlap last project */}
+              <div className="w-[480px] shrink-0 h-full" />
 
             </motion.div>
           </motion.div>
@@ -382,15 +390,19 @@ export default function Home() {
                   {/* Close Button */}
                   <motion.button
                     onClick={() => setSelectedWorkId(null)}
-                    className="fixed top-8 right-8 z-50 w-12 h-12 flex items-center justify-center bg-black text-white rounded-full hover:scale-110 transition-transform cursor-pointer"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.3, delay: 0.5 }} // Delayed entry
+                    className="fixed top-8 right-8 z-50 flex items-center gap-2 cursor-pointer group"
+                    style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, delay: 0.5 }}
                   >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
+                    <span className="text-[9px] uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors duration-300">Close</span>
+                    <div className="w-8 h-8 rounded-full border border-black/15 flex items-center justify-center group-hover:border-black/40 group-hover:bg-black group-hover:text-white transition-all duration-300">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </div>
                   </motion.button>
 
                   {/* Hero Image / Video - Browser Screen Proportions */}
@@ -400,8 +412,8 @@ export default function Home() {
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 20 }}
                       transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.2 }}
-                      className="w-full max-w-5xl mx-auto bg-gray-100 relative shrink-0 rounded-2xl overflow-hidden border border-gray-200/60"
-                      style={{ aspectRatio: '2/1' }}
+                      className="w-full max-w-[68rem] mx-auto bg-gray-100 relative shrink-0 rounded-2xl overflow-hidden border border-gray-200/60"
+                      style={{ aspectRatio: '16/9' }}
                     >
                       {/* Dynamic Media Logic */}
                       {work.mediaType === 'video' ? (
@@ -445,8 +457,8 @@ export default function Home() {
                             hidden: { y: "100%" },
                             visible: { y: 0, transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] } }
                           }}>
-                            <span className="text-sm font-mono text-accent mb-4 block">0{work.id} — {work.year}</span>
-                            <h1 className="text-8xl md:text-9xl font-serif tracking-tighter leading-none">{work.title}</h1>
+                            <span className="text-xs uppercase tracking-widest text-gray-400 mb-4 block" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>0{work.id} — {work.year}</span>
+                            <h1 className="text-7xl md:text-8xl font-normal tracking-tight leading-none" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>{work.title}</h1>
                           </motion.div>
                         </div>
                         <motion.div
@@ -456,7 +468,7 @@ export default function Home() {
                           }}
                           className="text-right"
                         >
-                          <span className="text-sm uppercase tracking-widest border border-accent text-accent px-5 py-1.5 rounded-full">{work.category}</span>
+                          <span className="text-xs uppercase tracking-widest" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#c98a97' }}>{work.category}</span>
                         </motion.div>
                       </div>
 
@@ -466,8 +478,7 @@ export default function Home() {
                             hidden: { opacity: 0, y: 20 },
                             visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] } }
                           }}>
-                            <ul className="text-sm space-y-1.5 font-medium leading-relaxed text-accent">
-                              {/* Dynamic Tech Stack List */}
+                            <ul className="text-sm space-y-1.5 font-medium leading-relaxed text-accent" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                               {work.services?.map((service, i) => (
                                 <li key={i}>{service}</li>
                               ))}
@@ -480,7 +491,7 @@ export default function Home() {
                               hidden: { opacity: 0, y: 20 },
                               visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] } }
                             }}
-                            className="text-base md:text-lg leading-relaxed font-light text-gray-700"
+                            className="text-base md:text-lg leading-relaxed font-light text-gray-700" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
                           >
                             {work.description}
                           </motion.p>
