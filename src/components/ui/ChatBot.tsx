@@ -70,7 +70,6 @@ const SUGGESTIONS: Record<MessageType | 'text', ActionBtn[]> = {
     { label: 'Get in touch',  kind: 'rich', type: 'contact'      },
   ],
   availability: [
-    { label: 'Get in touch',  kind: 'rich', type: 'contact'      },
     { label: 'Skills',        kind: 'rich', type: 'skills'       },
     { label: 'Projects',      kind: 'rich', type: 'projects'     },
     { label: '↓ Contact',     kind: 'nav',  target: '#contact'   },
@@ -383,7 +382,7 @@ function ProjectsCard({ isNew }: { isNew: boolean }) {
                   transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
                   style={{ overflow: 'hidden' }}
                 >
-                  <div style={{ padding: '0 16px 16px 40px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ padding: '0 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                     <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: FONT, lineHeight: 1.75, margin: '12px 0 0' }}>
                       {p.description}
                     </p>
