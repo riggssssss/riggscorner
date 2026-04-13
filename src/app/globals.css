@@ -14,10 +14,6 @@
   --background-end-rgb: 253, 246, 247;
 }
 
-* {
-  cursor: none !important;
-}
-
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(160deg, #fdf6f7 0%, #f8eef0 50%, #f3e6e9 100%);

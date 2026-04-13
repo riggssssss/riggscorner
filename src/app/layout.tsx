@@ -4,11 +4,10 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import SmoothScroll from "@/components/layout/SmoothScroll";
-import Preloader from "@/components/ui/Preloader";
 import PageTransition from "@/components/animations/PageTransition";
 import Header from "@/components/layout/Header";
-import MagneticCursor from "@/components/ui/MagneticCursor";
 import ChatBot from "@/components/ui/ChatBot";
+import PreloaderWrapper from "@/components/ui/PreloaderWrapper";
 
 const playfair = Playfair_Display({ subsets: ["latin"], variable: '--font-playfair' });
 
@@ -25,15 +24,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${GeistSans.variable} ${GeistMono.variable} ${playfair.variable} font-sans`} suppressHydrationWarning>
-        <Preloader />
-        <MagneticCursor />
-        <ChatBot />
-        <SmoothScroll>
-          <Header />
-          <PageTransition>
-            {children}
-          </PageTransition>
-        </SmoothScroll>
+        <PreloaderWrapper>
+          <ChatBot />
+          <SmoothScroll>
+            <Header />
+            <PageTransition>
+              {children}
+            </PageTransition>
+          </SmoothScroll>
+        </PreloaderWrapper>
       </body>
     </html>
   );
