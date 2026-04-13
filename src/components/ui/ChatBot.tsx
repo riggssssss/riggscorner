@@ -5,7 +5,7 @@ import { works } from '@/data/works';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ── Types ─────────────────────────────────────────────────────────────────
-type MessageType = 'text' | 'skills' | 'projects' | 'availability' | 'contact';
+type MessageType = 'text' | 'skills' | 'projects' | 'availability' | 'contact' | 'about';
 
 // Action button — either opens a rich card or triggers navigation
 type ActionBtn =
@@ -43,44 +43,60 @@ const pillLabelVariants = {
 };
 
 const QUICK: ActionBtn[] = [
+  { label: 'About me',      kind: 'rich', type: 'about'        },
   { label: 'Skills',        kind: 'rich', type: 'skills'       },
   { label: 'Projects',      kind: 'rich', type: 'projects'     },
   { label: 'Availability',  kind: 'rich', type: 'availability' },
   { label: 'Get in touch',  kind: 'rich', type: 'contact'      },
 ];
 
-// Context-aware suggestions shown after each assistant reply
-const SUGGESTIONS: Record<MessageType | 'text', ActionBtn[]> = {
-  text: [
-    { label: 'Skills',        kind: 'rich', type: 'skills'       },
-    { label: 'Projects',      kind: 'rich', type: 'projects'     },
-    { label: 'Availability',  kind: 'rich', type: 'availability' },
-    { label: 'Get in touch',  kind: 'rich', type: 'contact'      },
-  ],
-  skills: [
-    { label: 'Projects',      kind: 'rich', type: 'projects'     },
-    { label: 'Availability',  kind: 'rich', type: 'availability' },
-    { label: 'Get in touch',  kind: 'rich', type: 'contact'      },
-    { label: '↓ See my work', kind: 'nav',  target: '#work'      },
-  ],
-  projects: [
-    { label: 'Nomada',        kind: 'project', id: 1 },
-    { label: 'Lumina',        kind: 'project', id: 3 },
-    { label: 'Skills',        kind: 'rich', type: 'skills'       },
-    { label: 'Get in touch',  kind: 'rich', type: 'contact'      },
-  ],
-  availability: [
-    { label: 'Skills',        kind: 'rich', type: 'skills'       },
-    { label: 'Projects',      kind: 'rich', type: 'projects'     },
-    { label: '↓ Contact',     kind: 'nav',  target: '#contact'   },
-  ],
-  contact: [
-    { label: 'Skills',        kind: 'rich', type: 'skills'       },
-    { label: 'Projects',      kind: 'rich', type: 'projects'     },
-    { label: 'Availability',  kind: 'rich', type: 'availability' },
-    { label: '↓ See my work', kind: 'nav',  target: '#work'      },
-  ],
-};
+// All possible rich/nav/project actions — used to build dynamic suggestions
+const ALL_RICH: ActionBtn[] = [
+  { label: 'About me',      kind: 'rich', type: 'about'        },
+  { label: 'Skills',        kind: 'rich', type: 'skills'       },
+  { label: 'Projects',      kind: 'rich', type: 'projects'     },
+  { label: 'Availability',  kind: 'rich', type: 'availability' },
+  { label: 'Get in touch',  kind: 'rich', type: 'contact'      },
+];
+const PROJECT_BTNS: ActionBtn[] = [
+  { label: 'Nomada',  kind: 'project', id: 1 },
+  { label: 'Lumina',  kind: 'project', id: 3 },
+];
+// Returns up to 4 contextual suggestions, filtering out cards already seen
+function getSuggestions(messages: Message[]): ActionBtn[] {
+  if (messages.length <= 1) return QUICK;
+
+  // Track which rich types have already been shown as cards
+  const seenTypes = new Set<string>(
+    messages
+      .filter(m => m.role === 'assistant' && m.type)
+      .map(m => m.type as string)
+  );
+
+  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+  const lastType = lastAssistant?.type;
+
+  // After projects card — show project links first, then unseen rich cards
+  if (lastType === 'projects') {
+    const rest = ALL_RICH
+      .filter(b => b.kind === 'rich' && !seenTypes.has(b.type))
+      .slice(0, 2);
+    return [...PROJECT_BTNS, ...rest].slice(0, 4);
+  }
+
+  // After availability or skills — show unseen rich cards only
+  if (lastType === 'availability' || lastType === 'skills') {
+    const unseen = ALL_RICH.filter(b => b.kind === 'rich' && !seenTypes.has(b.type));
+    return unseen.slice(0, 4);
+  }
+
+  // After contact or plain text — show unseen rich cards
+  const unseen = ALL_RICH.filter(b => b.kind === 'rich' && !seenTypes.has(b.type));
+  if (unseen.length >= 2) return unseen.slice(0, 4);
+
+  // Most things seen — suggest projects
+  return [...unseen, ...PROJECT_BTNS].slice(0, 4);
+}
 
 const THINKING = [
   'Thinking...', 'Good question...', 'On it...',
@@ -148,8 +164,8 @@ const IconSend = () => (
 
 // ── Thinking indicator ────────────────────────────────────────────────────
 function ThinkingIndicator() {
-  const [phraseIdx] = useState(() => Math.floor(Math.random() * THINKING.length));
-  const phrase = THINKING[phraseIdx];
+  // useRef so each mount picks a fresh random phrase (useState initializer runs once per instance lifetime)
+  const phrase = useRef(THINKING[Math.floor(Math.random() * THINKING.length)]).current;
   return (
     <div style={{ display: 'flex', gap: 0 }}>
       {phrase.split('').map((char, i) => (
@@ -262,8 +278,8 @@ function SkillsCard({ isNew }: { isNew: boolean }) {
       style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}
     >
       {/* Header */}
-      <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 16 }}>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', fontFamily: FONT, lineHeight: 1.7, margin: 0 }}>
+      <div style={{ paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: 16 }}>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', fontFamily: FONT, lineHeight: 1.7, margin: 0 }}>
           Frontend dev with a <span style={{ color: '#e8b4be', fontWeight: 500 }}>design-first</span> approach. I build interfaces that feel right, not just work right.
         </p>
       </div>
@@ -280,8 +296,8 @@ function SkillsCard({ isNew }: { isNew: boolean }) {
           >
             {/* Label col */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 78, paddingTop: 3 }}>
-              <span style={{ color: 'rgba(201,138,151,0.5)' }}>{g.icon}</span>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: FONT, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{g.cat}</span>
+              <span style={{ color: 'rgba(201,138,151,0.7)' }}>{g.icon}</span>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: FONT, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{g.cat}</span>
             </div>
             {/* Tags */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -292,8 +308,8 @@ function SkillsCard({ isNew }: { isNew: boolean }) {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.2, delay: isNew ? 0.15 + gi * 0.07 + si * 0.04 : 0 }}
                   style={{
-                    fontSize: 12, fontFamily: FONT, color: 'rgba(255,255,255,0.7)',
-                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                    fontSize: 12, fontFamily: FONT, color: 'rgba(255,255,255,0.82)',
+                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
                     borderRadius: 6, padding: '3px 10px', lineHeight: 1.6,
                   }}
                 >
@@ -309,8 +325,6 @@ function SkillsCard({ isNew }: { isNew: boolean }) {
 }
 
 function ProjectsCard({ isNew }: { isNew: boolean }) {
-  const [expanded, setExpanded] = useState<number | null>(null);
-
   const openProject = (id: number) => {
     window.dispatchEvent(new CustomEvent('open-project', { detail: { id } }));
   };
@@ -320,108 +334,93 @@ function ProjectsCard({ isNew }: { isNew: boolean }) {
       initial={isNew ? { opacity: 0, y: 10 } : { opacity: 1 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{ display: 'flex', flexDirection: 'column', width: '100%' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}
     >
-      {/* Header */}
-      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', fontFamily: FONT, lineHeight: 1.65, margin: '0 0 14px' }}>
-        Selected work — tap to expand.
-      </p>
-
-      {/* Project rows */}
-      <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
-        {works.map((p, i) => (
-          <motion.div
-            key={p.id}
-            initial={isNew ? { opacity: 0, y: 6 } : { opacity: 1 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: isNew ? 0.08 + i * 0.1 : 0 }}
-            style={{ borderBottom: i < works.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
-          >
-            {/* Row trigger */}
-            <button
-              onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-              style={{
-                width: '100%', boxSizing: 'border-box', background: expanded === p.id ? 'rgba(201,138,151,0.04)' : 'transparent',
-                border: 'none', padding: '14px 16px', display: 'flex', alignItems: 'center',
-                justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left', transition: 'background 0.2s',
-              }}
-              onMouseEnter={e => { if (expanded !== p.id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
-              onMouseLeave={e => { if (expanded !== p.id) e.currentTarget.style.background = 'transparent'; }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)', fontFamily: FONT, fontVariantNumeric: 'tabular-nums', minWidth: 14 }}>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <div>
-                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: FONT, fontWeight: 500, marginBottom: 2 }}>{p.title}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', fontFamily: FONT, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{p.category}</span>
-                    <span style={{ width: 2, height: 2, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: FONT }}>{p.year}</span>
-                  </div>
-                </div>
+      {works.map((p, i) => (
+        <motion.div
+          key={p.id}
+          initial={isNew ? { opacity: 0, y: 8 } : { opacity: 1 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, delay: isNew ? i * 0.1 : 0 }}
+          style={{
+            borderRadius: 14,
+            border: '1px solid rgba(255,255,255,0.11)',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Top: title + meta */}
+          <div style={{ padding: '16px 18px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.92)', fontFamily: FONT, fontWeight: 400, marginBottom: 5, letterSpacing: '-0.01em' }}>{p.title}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: FONT, letterSpacing: '0.09em', textTransform: 'uppercase' }}>{p.category}</span>
+                <span style={{ width: 2, height: 2, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: FONT }}>{p.year}</span>
               </div>
-              <motion.span
-                animate={{ rotate: expanded === p.id ? 45 : 0 }}
-                transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-                style={{ display: 'flex', color: expanded === p.id ? '#c98a97' : 'rgba(255,255,255,0.2)', flexShrink: 0, transition: 'color 0.2s' }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              </motion.span>
-            </button>
+            </div>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: FONT, fontVariantNumeric: 'tabular-nums', paddingTop: 3 }}>
+              {String(i + 1).padStart(2, '0')}
+            </span>
+          </div>
 
-            {/* Expanded panel */}
-            <AnimatePresence initial={false}>
-              {expanded === p.id && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <div style={{ padding: '0 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: FONT, lineHeight: 1.75, margin: '12px 0 0' }}>
-                      {p.description}
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {p.services.map(s => (
-                        <span key={s} style={{ fontSize: 10, fontFamily: FONT, color: 'rgba(201,138,151,0.7)', background: 'rgba(201,138,151,0.07)', border: '1px solid rgba(201,138,151,0.15)', borderRadius: 5, padding: '3px 8px', letterSpacing: '0.03em' }}>{s}</span>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => openProject(p.id)}
-                      style={{
-                        alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6,
-                        background: 'transparent', border: 'none', padding: 0,
-                        fontSize: 12, color: '#c98a97', fontFamily: FONT, cursor: 'pointer',
-                        letterSpacing: '0.02em', opacity: 0.9, transition: 'opacity 0.15s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                      onMouseLeave={e => (e.currentTarget.style.opacity = '0.9')}
-                    >
-                      Open case study
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 17L17 7M17 7H7M17 7v10"/>
-                      </svg>
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        ))}
-      </div>
+          {/* Description */}
+          <div style={{ padding: '0 18px 14px' }}>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontFamily: FONT, lineHeight: 1.7, margin: 0 }}>
+              {p.description}
+            </p>
+          </div>
+
+          {/* Services */}
+          <div style={{ padding: '0 18px 14px', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {p.services.map(s => (
+              <span key={s} style={{
+                fontSize: 10, fontFamily: FONT, color: 'rgba(201,138,151,0.85)',
+                background: 'rgba(201,138,151,0.1)', border: '1px solid rgba(201,138,151,0.22)',
+                borderRadius: 5, padding: '3px 8px', letterSpacing: '0.03em',
+              }}>{s}</span>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={() => openProject(p.id)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              background: 'rgba(255,255,255,0.04)',
+              border: 'none', borderTop: '1px solid rgba(255,255,255,0.09)',
+              padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              cursor: 'pointer', transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,138,151,0.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+          >
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontFamily: FONT, letterSpacing: '0.02em' }}>Open case study</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(201,138,151,0.8)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 17L17 7M17 7H7M17 7v10"/>
+            </svg>
+          </button>
+        </motion.div>
+      ))}
     </motion.div>
   );
 }
 
-const AVAILABILITY = [
-  { label: 'Freelance',  detail: 'Projects, MVPs, redesigns', icon: '◈' },
-  { label: 'Full-time',  detail: 'Remote or Castellón area',  icon: '◈' },
-  { label: 'Part-time',  detail: 'Open to discuss',           icon: '◈' },
+const AVAILABILITY_MODES = [
+  {
+    label: 'Freelance',
+    detail: 'One-off projects, MVPs, redesigns',
+    sub: 'Flexible scope & timeline',
+  },
+  {
+    label: 'Full-time',
+    detail: 'Remote or Castellón area',
+    sub: 'Looking for product-focused teams',
+  },
+  {
+    label: 'Part-time',
+    detail: 'Side collaboration or consulting',
+    sub: 'A few hours a week, open to discuss',
+  },
 ];
 
 function AvailabilityCard({ isNew }: { isNew: boolean }) {
@@ -430,62 +429,112 @@ function AvailabilityCard({ isNew }: { isNew: boolean }) {
       initial={isNew ? { opacity: 0, y: 10 } : { opacity: 1 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}
+      style={{ display: 'flex', flexDirection: 'column', width: '100%', borderRadius: 14, border: '1px solid rgba(255,255,255,0.11)', overflow: 'hidden' }}
     >
-      {/* Status banner */}
+      {/* Status header */}
       <motion.div
-        initial={isNew ? { opacity: 0, y: -4 } : { opacity: 1 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: isNew ? 0.05 : 0 }}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'rgba(201,138,151,0.07)', border: '1px solid rgba(201,138,151,0.18)',
-          borderRadius: 12, padding: '12px 16px',
-        }}
+        initial={isNew ? { opacity: 0 } : { opacity: 1 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.35, delay: isNew ? 0.04 : 0 }}
+        style={{ padding: '18px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
       >
-        {/* Pulsing dot */}
-        <div style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
-          <motion.div
-            animate={{ scale: [1, 1.9, 1], opacity: [0.6, 0, 0.6] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#c98a97' }}
-          />
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#c98a97' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <div style={{ position: 'relative', width: 7, height: 7, flexShrink: 0 }}>
+            <motion.div
+              animate={{ scale: [1, 2.2, 1], opacity: [0.5, 0, 0.5] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#c98a97' }}
+            />
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#c98a97' }} />
+          </div>
+          <span style={{ fontSize: 10, color: '#c98a97', fontFamily: FONT, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Available now</span>
         </div>
-        <div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontFamily: FONT, fontWeight: 500 }}>Available for work</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: FONT, marginTop: 1 }}>Open to new projects as of 2025</div>
-        </div>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, lineHeight: 1.7, margin: 0, fontWeight: 400 }}>
+          Open to new work as of {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })} — whether it's a quick project or something longer. I'm based in Castellón but work <span style={{ color: '#c98a97' }}>fully remote</span>.
+        </p>
       </motion.div>
 
       {/* Mode rows */}
-      <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
-        {AVAILABILITY.map((row, i) => (
-          <motion.div
-            key={row.label}
-            initial={isNew ? { opacity: 0, x: -8 } : { opacity: 1 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.28, delay: isNew ? 0.15 + i * 0.07 : 0 }}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '13px 16px',
-              borderBottom: i < AVAILABILITY.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)', fontFamily: FONT, fontWeight: 500 }}>{row.label}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: FONT }}>{row.detail}</div>
-            </div>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(201,138,151,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </motion.div>
-        ))}
-      </div>
+      {AVAILABILITY_MODES.map((row, i) => (
+        <motion.div
+          key={row.label}
+          initial={isNew ? { opacity: 0, x: -6 } : { opacity: 1 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.28, delay: isNew ? 0.12 + i * 0.08 : 0 }}
+          style={{
+            padding: '14px 20px',
+            borderBottom: i < AVAILABILITY_MODES.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)', fontFamily: FONT, fontWeight: 400, marginBottom: 3 }}>{row.label}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.42)', fontFamily: FONT, marginBottom: 1 }}>{row.detail}</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', fontFamily: FONT }}>{row.sub}</div>
+          </div>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(201,138,151,0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </motion.div>
+      ))}
 
-      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.28)', fontFamily: FONT, margin: 0, lineHeight: 1.6 }}>
-        Based in Castellón, Spain — working remotely worldwide.
-      </p>
+      {/* Footer nudge */}
+      <motion.div
+        initial={isNew ? { opacity: 0 } : { opacity: 1 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: isNew ? 0.38 : 0 }}
+        style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)' }}
+      >
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: FONT }}>
+          Not sure what fits? Just ask — we'll figure it out.
+        </span>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function AboutCard({ isNew }: { isNew: boolean }) {
+  return (
+    <motion.div
+      initial={isNew ? { opacity: 0, y: 10 } : { opacity: 1 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%', borderRadius: 14, border: '1px solid rgba(255,255,255,0.11)', overflow: 'hidden' }}
+    >
+      {/* Bio block */}
+      <motion.div
+        initial={isNew ? { opacity: 0 } : { opacity: 1 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.35, delay: isNew ? 0.05 : 0 }}
+        style={{ padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', fontFamily: FONT, lineHeight: 1.75, margin: 0, fontWeight: 400 }}>
+          I'm a frontend developer and designer from Castellón, Spain. Currently studying Computer Engineering while building real products — I care a lot about the UI <span style={{ color: '#c98a97' }}>feeling right</span>, not just working right.
+        </p>
+      </motion.div>
+
+      {/* Facts */}
+      {[
+        { label: 'Based in',   value: 'Castellón, Spain' },
+        { label: 'Studying',   value: 'Computer Engineering, 2nd year' },
+        { label: 'Certified',  value: 'IBM UX Design Fundamentals' },
+        { label: 'Languages',  value: 'Spanish · Valencian · English' },
+      ].map((row, i) => (
+        <motion.div
+          key={row.label}
+          initial={isNew ? { opacity: 0, x: -6 } : { opacity: 1 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.28, delay: isNew ? 0.12 + i * 0.07 : 0 }}
+          style={{
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12,
+            padding: '12px 20px',
+            borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+          }}
+        >
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontFamily: FONT, letterSpacing: '0.09em', textTransform: 'uppercase', flexShrink: 0 }}>{row.label}</span>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', fontFamily: FONT, textAlign: 'right' }}>{row.value}</span>
+        </motion.div>
+      ))}
     </motion.div>
   );
 }
@@ -509,15 +558,29 @@ function ContactCard({ isNew, onSent }: { isNew: boolean; onSent: (msg: string) 
   const [email, setEmail]     = useState('');
   const [message, setMessage] = useState('');
   const [sent, setSent]       = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError]     = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !message) return;
-    const subject = encodeURIComponent(`Message from ${name} via portfolio`);
-    const body    = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`);
-    window.open(`mailto:adrian2000gg@gmail.com?subject=${subject}&body=${body}`);
-    setSent(true);
-    onSent(`My name is ${name}, email: ${email}. Message: ${message}`);
+    if (!name.trim() || !email.trim() || !message.trim()) return;
+    setSending(true);
+    setError('');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), message: message.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Send failed');
+      setSent(true);
+      onSent(`My name is ${name}, email: ${email}. Message: ${message}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   if (sent) {
@@ -572,7 +635,8 @@ function ContactCard({ isNew, onSent }: { isNew: boolean; onSent: (msg: string) 
             value={f.value}
             onChange={e => f.onChange(e.target.value)}
             required
-            style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+            disabled={sending}
+            style={{ ...inputStyle, flex: 1, minWidth: 0, opacity: sending ? 0.6 : 1 }}
             onFocus={e => { e.target.style.borderColor = 'rgba(201,138,151,0.4)'; e.target.style.background = 'rgba(255,255,255,0.06)'; }}
             onBlur={e =>  { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.background = 'rgba(255,255,255,0.04)'; }}
           />
@@ -587,31 +651,54 @@ function ContactCard({ isNew, onSent }: { isNew: boolean; onSent: (msg: string) 
         value={message}
         onChange={e => setMessage(e.target.value)}
         required
+        disabled={sending}
         rows={3}
-        style={{ ...inputStyle, resize: 'none', lineHeight: 1.6 }}
+        style={{ ...inputStyle, resize: 'none', lineHeight: 1.6, opacity: sending ? 0.6 : 1 }}
         onFocus={e => { e.target.style.borderColor = 'rgba(201,138,151,0.4)'; e.target.style.background = 'rgba(255,255,255,0.06)'; }}
         onBlur={e =>  { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.background = 'rgba(255,255,255,0.04)'; }}
       />
 
+      {error && (
+        <div style={{ fontSize: 12, color: '#e8706a', fontFamily: FONT, padding: '6px 10px', background: 'rgba(232,112,106,0.08)', border: '1px solid rgba(232,112,106,0.18)', borderRadius: 8 }}>
+          {error}
+        </div>
+      )}
+
       <motion.button
         type="submit"
-        whileTap={{ scale: 0.97 }}
+        disabled={sending}
+        whileTap={!sending ? { scale: 0.97 } : {}}
         initial={isNew ? { opacity: 0, y: 4 } : { opacity: 1 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: isNew ? 0.28 : 0 }}
         style={{
-          width: '100%', background: 'rgba(201,138,151,0.1)', border: '1px solid rgba(201,138,151,0.22)',
+          width: '100%', background: sending ? 'rgba(201,138,151,0.07)' : 'rgba(201,138,151,0.1)',
+          border: '1px solid rgba(201,138,151,0.22)',
           borderRadius: 10, padding: '11px', fontSize: 13, color: '#c98a97', fontFamily: FONT,
-          cursor: 'pointer', letterSpacing: '0.04em', transition: 'background 0.2s, border-color 0.2s',
+          cursor: sending ? 'not-allowed' : 'pointer', letterSpacing: '0.04em',
+          transition: 'background 0.2s, border-color 0.2s',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,138,151,0.18)'; e.currentTarget.style.borderColor = 'rgba(201,138,151,0.35)'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,138,151,0.1)'; e.currentTarget.style.borderColor = 'rgba(201,138,151,0.22)'; }}
+        onMouseEnter={e => { if (!sending) { e.currentTarget.style.background = 'rgba(201,138,151,0.18)'; e.currentTarget.style.borderColor = 'rgba(201,138,151,0.35)'; } }}
+        onMouseLeave={e => { e.currentTarget.style.background = sending ? 'rgba(201,138,151,0.07)' : 'rgba(201,138,151,0.1)'; e.currentTarget.style.borderColor = 'rgba(201,138,151,0.22)'; }}
       >
-        Send message
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 19V5M5 12l7-7 7 7" />
-        </svg>
+        {sending ? (
+          <>
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              style={{ display: 'inline-block', width: 12, height: 12, border: '1.5px solid rgba(201,138,151,0.3)', borderTopColor: '#c98a97', borderRadius: '50%' }}
+            />
+            Sending...
+          </>
+        ) : (
+          <>
+            Send message
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </>
+        )}
       </motion.button>
     </motion.form>
   );
@@ -623,10 +710,11 @@ function MessageContent({ msg, isNew, onContactSent }: { msg: Message; isNew: bo
     return <span style={{ color: 'rgba(255,255,255,0.45)', fontFamily: FONT, fontSize: 14, lineHeight: 1.65 }}>{msg.content}</span>;
   }
   switch (msg.type) {
-    case 'skills':       return <SkillsCard isNew={isNew} />;
-    case 'projects':     return <ProjectsCard isNew={isNew} />;
-    case 'availability': return <AvailabilityCard isNew={isNew} />;
-    case 'contact':      return <ContactCard isNew={isNew} onSent={onContactSent} />;
+    case 'about':        return <div style={{ paddingBottom: 12 }}><AboutCard isNew={isNew} /></div>;
+    case 'skills':       return <div style={{ paddingBottom: 12 }}><SkillsCard isNew={isNew} /></div>;
+    case 'projects':     return <div style={{ paddingBottom: 12 }}><ProjectsCard isNew={isNew} /></div>;
+    case 'availability': return <div style={{ paddingBottom: 12 }}><AvailabilityCard isNew={isNew} /></div>;
+    case 'contact':      return <div style={{ paddingBottom: 12 }}><ContactCard isNew={isNew} onSent={onContactSent} /></div>;
     default:
       return (
         <span style={{ color: 'rgba(255,255,255,0.9)', fontFamily: FONT, fontSize: 14, lineHeight: 1.65 }}>
@@ -649,13 +737,14 @@ function MobileChatBot() {
     } catch {}
     return [INITIAL_MESSAGE];
   });
-  const [newIdx, setNewIdx]         = useState<number | null>(null);
-  const [input, setInput]           = useState('');
-  const [loading, setLoading]       = useState(false);
-  const [restarting, setRestarting] = useState(false);
-  const [shake, setShake]           = useState(false);
-  const [sending, setSending]       = useState(false);
-  const [showChat, setShowChat]     = useState(false);
+  const [newIdx, setNewIdx]             = useState<number | null>(null);
+  const [input, setInput]               = useState('');
+  const [loading, setLoading]           = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [restarting, setRestarting]     = useState(false);
+  const [shake, setShake]               = useState(false);
+  const [sending, setSending]           = useState(false);
+  const [showChat, setShowChat]         = useState(false);
   const scrollRef    = useRef<HTMLDivElement>(null);
   const inputRef     = useRef<HTMLInputElement>(null);
   const userScrolledRef = useRef(false);
@@ -724,16 +813,18 @@ function MobileChatBot() {
       const label = btn.target === '#work' ? 'Taking you to my work →' : 'Taking you to the contact section →';
       sendNavFeedback(label, () => {
         setShowChat(false);
+        // Wait for sheet close animation (450ms) + body overflow restore + extra buffer
         setTimeout(() => {
-          (window as any).lenis?.scrollTo(btn.target, {
-            duration: 2.0,
-            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          });
-          // fallback for native scroll when lenis is absent on mobile
-          if (!(window as any).lenis) {
-            document.querySelector(btn.target)?.scrollIntoView({ behavior: 'smooth' });
+          const el = document.querySelector(btn.target) as HTMLElement | null;
+          if ((window as any).lenis) {
+            (window as any).lenis.scrollTo(btn.target, {
+              duration: 2.0,
+              easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            });
+          } else if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        }, 400);
+        }, 600);
       });
     } else if (btn.kind === 'project') {
       const name = works.find(w => w.id === btn.id)?.title ?? 'project';
@@ -741,7 +832,7 @@ function MobileChatBot() {
         setShowChat(false);
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('open-project', { detail: { id: btn.id } }));
-        }, 400);
+        }, 500);
       });
     }
   };
@@ -756,20 +847,48 @@ function MobileChatBot() {
     setNewIdx(next.length - 1);
     setInput('');
     setLoading(true);
-    const thinkDelay = 600 + Math.random() * 800;
+    setStreamingText('');
+
     try {
       const apiMessages = next
         .filter(m => m.content && m.content.trim() !== '')
         .map(({ role, content }) => ({ role, content }));
-      const res  = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: apiMessages }) });
-      const data = await res.json();
-      const content = (data.content || '').trim();
-      if (!content || data.error) throw new Error(data.error || 'empty response');
-      await new Promise(r => setTimeout(r, thinkDelay));
-      setMessages(prev => { const updated = [...prev, { role: 'assistant' as const, content, ts: now() }]; setNewIdx(updated.length - 1); return updated; });
-      setTimeout(playPop, 120);
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (!res.ok || !res.body) throw new Error('Stream unavailable');
+
+      setLoading(false);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setStreamingText(accumulated);
+        if (!userScrolledRef.current) {
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+        }
+      }
+
+      const finalContent = accumulated.trim();
+      if (!finalContent) throw new Error('empty response');
+      setStreamingText('');
+      setMessages(prev => {
+        const updated = [...prev, { role: 'assistant' as const, content: finalContent, ts: now() }];
+        setNewIdx(updated.length - 1);
+        return updated;
+      });
+      setTimeout(playPop, 80);
     } catch {
-      await new Promise(r => setTimeout(r, thinkDelay));
+      setStreamingText('');
+      setLoading(false);
       setMessages(prev => [...prev, { role: 'assistant', content: 'Oops, algo se rompió. ¿Lo intentamos de nuevo?', ts: now() }]);
     } finally {
       setLoading(false);
@@ -799,12 +918,15 @@ function MobileChatBot() {
               border: 'none', cursor: 'pointer', fontFamily: FONT,
             }}
           >
-            <motion.div
-              style={{ width: 8, height: 8, borderRadius: '50%', background: '#c98a97', flexShrink: 0 }}
-              animate={{ scale: [1, 1.28, 0.95, 1.15, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: [0.33, 0, 0.66, 1], repeatDelay: 1.2, times: [0, 0.2, 0.38, 0.55, 1] }}
-            />
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.06em' }}>Chat</span>
+            <div style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
+              <motion.div
+                style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#c98a97' }}
+                animate={{ scale: [1, 2.2, 1], opacity: [0.6, 0, 0.6] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#c98a97' }} />
+            </div>
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.06em' }}>let's talk!</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -853,11 +975,19 @@ function MobileChatBot() {
 
               {/* Sheet header */}
               <div style={{
-                height: 50, flexShrink: 0,
+                height: 56, flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.06)',
               }}>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 500, letterSpacing: '0.04em' }}>Chat</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                    background: 'linear-gradient(135deg, #c98a97 0%, #e8b4be 100%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 400, color: 'rgba(0,0,0,0.55)', fontFamily: FONT,
+                  }}>A</div>
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: FONT, fontWeight: 400 }}>Adrián García</span>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <ActionBtn onClick={e => { e.stopPropagation(); handleRestart(); }} title="Nueva conversación" disabled={loading || restarting}><IconRestart /></ActionBtn>
                   <ActionBtn onClick={e => { e.stopPropagation(); setShowChat(false); }} title="Cerrar">
@@ -902,29 +1032,47 @@ function MobileChatBot() {
                     <ThinkingIndicator />
                   </motion.div>
                 )}
+
+                {/* Streaming text */}
+                {!loading && streamingText && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                    <span style={{ fontSize: 11, letterSpacing: '0.03em', color: 'rgba(255,255,255,0.4)', fontFamily: FONT, paddingLeft: 2 }}>Adrián</span>
+                    <span style={{ color: 'rgba(255,255,255,0.9)', fontFamily: FONT, fontSize: 14, lineHeight: 1.65 }}>
+                      <AnimatedText text={streamingText} isNew={false} />
+                      <motion.span
+                        animate={{ opacity: [1, 0, 1] }}
+                        transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                        style={{ display: 'inline-block', width: 2, height: '1em', background: '#c98a97', borderRadius: 1, marginLeft: 2, verticalAlign: 'text-bottom' }}
+                      />
+                    </span>
+                  </motion.div>
+                )}
               </div>
 
               {/* Suggestions */}
-              {!loading && !restarting && (() => {
-                const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
-                const key = (lastAssistant?.type ?? 'text') as MessageType | 'text';
-                const suggestions = messages.length === 1 ? QUICK : SUGGESTIONS[key];
+              {!loading && !streamingText && !restarting && (() => {
+                const suggestions = getSuggestions(messages);
                 return (
                   <div style={{ padding: '8px 16px 10px', display: 'flex', flexWrap: 'wrap', gap: 7, flexShrink: 0 }}>
-                    {suggestions.map((q) => (
-                      <button
-                        key={q.label}
-                        onClick={() => handleAction(q)}
-                        style={{
-                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 999, padding: '7px 14px', fontSize: 12,
-                          color: 'rgba(255,255,255,0.75)', fontFamily: FONT, cursor: 'pointer',
-                          letterSpacing: '0.01em', whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {q.label}
-                      </button>
-                    ))}
+                    {suggestions.map((q: ActionBtn) => {
+                      const isProject = q.kind === 'project';
+                      return (
+                        <button
+                          key={q.label}
+                          onClick={() => handleAction(q)}
+                          style={{
+                            background: isProject ? 'rgba(201,138,151,0.1)' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${isProject ? 'rgba(201,138,151,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                            borderRadius: 999, padding: '7px 14px', fontSize: 12,
+                            color: isProject ? '#c98a97' : 'rgba(255,255,255,0.75)',
+                            fontFamily: FONT, cursor: 'pointer',
+                            letterSpacing: '0.01em', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {q.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 );
               })()}
@@ -987,14 +1135,15 @@ function DesktopChatBot() {
     } catch {}
     return [INITIAL_MESSAGE];
   });
-  const [newIdx, setNewIdx]         = useState<number | null>(null);
-  const [input, setInput]           = useState('');
-  const [loading, setLoading]       = useState(false);
-  const [restarting, setRestarting] = useState(false);
-  const [hOpen, setHOpen]           = useState(600);
+  const [newIdx, setNewIdx]             = useState<number | null>(null);
+  const [input, setInput]               = useState('');
+  const [loading, setLoading]           = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [restarting, setRestarting]     = useState(false);
+  const [hOpen, setHOpen]               = useState(600);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [shake, setShake]           = useState(false);
-  const [sending, setSending]       = useState(false);
+  const [shake, setShake]               = useState(false);
+  const [sending, setSending]           = useState(false);
   const userScrolledRef = useRef(false);
   const inputRef     = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1171,40 +1320,51 @@ function DesktopChatBot() {
     setNewIdx(next.length - 1);
     setInput('');
     setLoading(true);
-
-    // Human-like typing delay — feels like the bot is thinking before replying
-    const thinkDelay = 600 + Math.random() * 800;
+    setStreamingText('');
 
     try {
-      // Strip rich-card messages (empty content) — Groq rejects empty content
       const apiMessages = next
         .filter(m => m.content && m.content.trim() !== '')
         .map(({ role, content }) => ({ role, content }));
 
-      const res  = await fetch('/api/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: apiMessages }),
       });
-      const data = await res.json();
-      const content = (data.content || '').trim();
 
-      if (!content || data.error) {
-        throw new Error(data.error || 'empty response');
+      if (!res.ok || !res.body) throw new Error('Stream unavailable');
+
+      // Switch from loading indicator to streaming mode
+      setLoading(false);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setStreamingText(accumulated);
+        // Keep scroll locked to bottom while streaming
+        if (!userScrolledRef.current) {
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+        }
       }
 
-      await new Promise(r => setTimeout(r, thinkDelay));
-
+      // Commit streamed text as a real message and clear streaming state
+      const finalContent = accumulated.trim();
+      if (!finalContent) throw new Error('empty response');
+      setStreamingText('');
       setMessages(prev => {
-        const updated = [...prev, { role: 'assistant' as const, content, ts: now() }];
+        const updated = [...prev, { role: 'assistant' as const, content: finalContent, ts: now() }];
         setNewIdx(updated.length - 1);
         return updated;
       });
-
-      // Play sound after message is set — slight delay so it lands with the text
-      setTimeout(playPop, 120);
+      setTimeout(playPop, 80);
     } catch {
-      await new Promise(r => setTimeout(r, thinkDelay));
+      setStreamingText('');
+      setLoading(false);
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Oops, something broke on my end. Try again?',
@@ -1278,7 +1438,17 @@ function DesktopChatBot() {
             animate={!isOpen ? { backgroundPosition: ['0% center', '200% center'] } : {}}
             transition={!isOpen ? { duration: 4, repeat: Infinity, ease: 'linear' } : {}}
           >
-            {isOpen ? 'Chat' : "let's talk!"}
+            {isOpen ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                  background: 'linear-gradient(135deg, #c98a97 0%, #e8b4be 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 400, color: 'rgba(0,0,0,0.55)', letterSpacing: 0, fontFamily: FONT,
+                }}>A</span>
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 400, letterSpacing: '0.02em', fontFamily: FONT }}>Adrián García</span>
+              </span>
+            ) : "let's talk!"}
           </motion.span>
 
           <AnimatePresence>
@@ -1372,55 +1542,71 @@ function DesktopChatBot() {
                     <ThinkingIndicator />
                   </motion.div>
                 )}
+
+                {/* Streaming text — shown while response is being received */}
+                {!loading && streamingText && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="flex flex-col items-start gap-1">
+                    <span style={{ fontSize: 11, letterSpacing: '0.03em', color: 'rgba(255,255,255,0.4)', fontFamily: FONT, paddingLeft: 2 }}>Adrián</span>
+                    <span style={{ color: 'rgba(255,255,255,0.9)', fontFamily: FONT, fontSize: 14, lineHeight: 1.65 }}>
+                      <AnimatedText text={streamingText} isNew={false} />
+                      <motion.span
+                        animate={{ opacity: [1, 0, 1] }}
+                        transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                        style={{ display: 'inline-block', width: 2, height: '1em', background: '#c98a97', borderRadius: 1, marginLeft: 2, verticalAlign: 'text-bottom' }}
+                      />
+                    </span>
+                  </motion.div>
+                )}
               </div>
 
               {/* Contextual suggestions — always shown after last assistant message */}
-              {!loading && !restarting && (() => {
-                const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
-                const key = (lastAssistant?.type ?? 'text') as MessageType | 'text';
-                const suggestions = messages.length === 1 ? QUICK : SUGGESTIONS[key];
+              {!loading && !streamingText && !restarting && (() => {
+                const suggestions = getSuggestions(messages);
                 return (
                   <motion.div
-                    key={key + messages.length}
+                    key={messages.length}
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25, delay: 0.1 }}
                     style={{ padding: '0 20px 14px', display: 'flex', flexWrap: 'wrap', gap: 8 }}
                   >
-                    {suggestions.map((q, i) => (
-                      <motion.button
-                        key={q.label}
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2, delay: 0.05 + i * 0.04 }}
-                        onClick={() => handleAction(q)}
-                        style={{
-                          background: 'rgba(255,255,255,0.05)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 999,
-                          padding: '7px 16px',
-                          fontSize: 12,
-                          color: 'rgba(255,255,255,0.75)',
-                          fontFamily: FONT,
-                          cursor: 'pointer',
-                          letterSpacing: '0.01em',
-                          transition: 'background 0.2s, border-color 0.2s, color 0.2s',
-                          whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = 'rgba(201,138,151,0.1)';
-                          e.currentTarget.style.borderColor = 'rgba(201,138,151,0.4)';
-                          e.currentTarget.style.color = '#c98a97';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                          e.currentTarget.style.color = 'rgba(255,255,255,0.75)';
-                        }}
-                      >
-                        {q.label}
-                      </motion.button>
-                    ))}
+                    {suggestions.map((q: ActionBtn, i: number) => {
+                      const isProject = q.kind === 'project';
+                      return (
+                        <motion.button
+                          key={q.label}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: 0.05 + i * 0.04 }}
+                          onClick={() => handleAction(q)}
+                          style={{
+                            background: isProject ? 'rgba(201,138,151,0.1)' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${isProject ? 'rgba(201,138,151,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                            borderRadius: 999,
+                            padding: '7px 16px',
+                            fontSize: 12,
+                            color: isProject ? '#c98a97' : 'rgba(255,255,255,0.75)',
+                            fontFamily: FONT,
+                            cursor: 'pointer',
+                            letterSpacing: '0.01em',
+                            transition: 'background 0.2s, border-color 0.2s, color 0.2s',
+                            whiteSpace: 'nowrap',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(201,138,151,0.15)';
+                            e.currentTarget.style.borderColor = 'rgba(201,138,151,0.5)';
+                            e.currentTarget.style.color = '#c98a97';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = isProject ? 'rgba(201,138,151,0.1)' : 'rgba(255,255,255,0.05)';
+                            e.currentTarget.style.borderColor = isProject ? 'rgba(201,138,151,0.3)' : 'rgba(255,255,255,0.1)';
+                            e.currentTarget.style.color = isProject ? '#c98a97' : 'rgba(255,255,255,0.75)';
+                          }}
+                        >
+                          {q.label}
+                        </motion.button>
+                      );
+                    })}
                   </motion.div>
                 );
               })()}

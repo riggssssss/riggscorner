@@ -1,5 +1,5 @@
 import Groq from 'groq-sdk';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
 
-    const completion = await groq.chat.completions.create({
+    const stream = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -43,16 +43,42 @@ export async function POST(req: NextRequest) {
       ],
       max_tokens: 400,
       temperature: 0.7,
+      stream: true,
     });
 
-    const content = (completion.choices[0]?.message?.content || '').trim();
-    if (!content) {
-      return NextResponse.json({ error: 'Empty response from model' }, { status: 500 });
-    }
-    return NextResponse.json({ content });
+    const encoder = new TextEncoder();
+
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            const delta = chunk.choices[0]?.delta?.content;
+            if (delta) {
+              controller.enqueue(encoder.encode(delta));
+            }
+          }
+        } catch (err) {
+          controller.error(err);
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no',
+      },
+    });
   } catch (error) {
     console.error('[chat/route]', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
