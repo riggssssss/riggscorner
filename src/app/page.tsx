@@ -255,8 +255,8 @@ export default function Home() {
               {/* 03. Works Slides */}
               {works.map((work, index) => {
                 return (
-                  <Slide key={work.id} className="w-[100vw] bg-transparent relative shrink-0 flex items-center justify-center px-10 pointer-events-none">
-                    <div className="w-full max-w-[70vw] h-[80vh] flex flex-col justify-center relative group pointer-events-auto">
+                  <Slide key={work.id} className="w-[100vw] bg-transparent relative shrink-0 flex items-center justify-start pl-20 pointer-events-none">
+                    <div className="h-[80vh] flex flex-col justify-center relative group pointer-events-auto" style={{ width: 'calc(100vw - 500px)' }}>
 
                       {/* Video/Image Container */}
                       <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
