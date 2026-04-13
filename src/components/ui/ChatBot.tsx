@@ -509,14 +509,14 @@ function AboutCard({ isNew }: { isNew: boolean }) {
         style={{ padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
       >
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', fontFamily: FONT, lineHeight: 1.75, margin: 0, fontWeight: 400 }}>
-          I'm a frontend developer and designer from Castellón, Spain. Currently studying Computer Engineering while building real products — I care a lot about the UI <span style={{ color: '#c98a97' }}>feeling right</span>, not just working right.
+          I'm a frontend developer and designer from Castellón, Spain. Currently studying Software Developer DAM while building real products — I care a lot about the UI <span style={{ color: '#c98a97' }}>feeling right</span>, not just working right.
         </p>
       </motion.div>
 
       {/* Facts */}
       {[
         { label: 'Based in',   value: 'Castellón, Spain' },
-        { label: 'Studying',   value: 'Computer Engineering, 2nd year' },
+        { label: 'Studies',    value: 'Software Developer DAM' },
         { label: 'Certified',  value: 'IBM UX Design Fundamentals' },
         { label: 'Languages',  value: 'Spanish · Valencian · English' },
       ].map((row, i) => (
