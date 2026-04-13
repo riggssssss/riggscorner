@@ -871,7 +871,7 @@ function MobileChatBot() {
               {/* Messages */}
               <div
                 ref={scrollRef}
-                style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 12px', display: 'flex', flexDirection: 'column', gap: 20, overscrollBehavior: 'contain' }}
+                style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 28px', display: 'flex', flexDirection: 'column', gap: 20, overscrollBehavior: 'contain' }}
                 onScroll={e => {
                   const el = e.currentTarget;
                   userScrolledRef.current = el.scrollHeight - el.scrollTop - el.clientHeight > 80;
@@ -910,7 +910,7 @@ function MobileChatBot() {
                 const key = (lastAssistant?.type ?? 'text') as MessageType | 'text';
                 const suggestions = messages.length === 1 ? QUICK : SUGGESTIONS[key];
                 return (
-                  <div style={{ padding: '0 16px 10px', display: 'flex', flexWrap: 'wrap', gap: 7, flexShrink: 0 }}>
+                  <div style={{ padding: '8px 16px 10px', display: 'flex', flexWrap: 'wrap', gap: 7, flexShrink: 0 }}>
                     {suggestions.map((q) => (
                       <button
                         key={q.label}
