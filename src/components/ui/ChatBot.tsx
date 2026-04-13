@@ -636,8 +636,343 @@ function MessageContent({ msg, isNew, onContactSent }: { msg: Message; isNew: bo
   }
 }
 
-// ── Main component ────────────────────────────────────────────────────────
-export default function ChatBot() {
+// ── Mobile chatbot — floating button + bottom sheet ───────────────────────
+function MobileChatBot() {
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === 'undefined') return [INITIAL_MESSAGE];
+    try {
+      const saved = localStorage.getItem('chatbot-messages-mobile');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Message[];
+        return parsed.length > 0 ? parsed : [INITIAL_MESSAGE];
+      }
+    } catch {}
+    return [INITIAL_MESSAGE];
+  });
+  const [newIdx, setNewIdx]         = useState<number | null>(null);
+  const [input, setInput]           = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [shake, setShake]           = useState(false);
+  const [sending, setSending]       = useState(false);
+  const [showChat, setShowChat]     = useState(false);
+  const scrollRef    = useRef<HTMLDivElement>(null);
+  const inputRef     = useRef<HTMLInputElement>(null);
+  const userScrolledRef = useRef(false);
+
+  // Persist messages
+  useEffect(() => {
+    try { localStorage.setItem('chatbot-messages-mobile', JSON.stringify(messages)); } catch {}
+  }, [messages]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (!showChat) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    if (!userScrolledRef.current) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [messages, loading, showChat]);
+
+  // Lock body scroll when sheet is open
+  useEffect(() => {
+    document.body.style.overflow = showChat ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [showChat]);
+
+  // Listen for open-chat event (e.g. from Contact CTA button)
+  useEffect(() => {
+    const handler = () => setShowChat(true);
+    window.addEventListener('open-chat', handler);
+    return () => window.removeEventListener('open-chat', handler);
+  }, []);
+
+  const handleRestart = async () => {
+    setRestarting(true);
+    await new Promise(r => setTimeout(r, 280));
+    try { localStorage.removeItem('chatbot-messages-mobile'); } catch {}
+    setMessages([INITIAL_MESSAGE]);
+    setNewIdx(0);
+    setInput('');
+    setRestarting(false);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const sendRich = (label: string, type: MessageType) => {
+    userScrolledRef.current = false;
+    const t = now();
+    setMessages(prev => {
+      const next = [...prev, { role: 'user' as const, content: label, ts: t }, { role: 'assistant' as const, content: '', type, ts: t }];
+      setNewIdx(next.length - 1);
+      return next;
+    });
+  };
+
+  const sendNavFeedback = (text: string, cb: () => void) => {
+    const t = now();
+    setMessages(prev => {
+      const next = [...prev, { role: 'assistant' as const, content: text, ts: t }];
+      setNewIdx(next.length - 1);
+      return next;
+    });
+    setTimeout(cb, 700);
+  };
+
+  const handleAction = (btn: ActionBtn) => {
+    if (btn.kind === 'rich') {
+      sendRich(btn.label, btn.type);
+    } else if (btn.kind === 'nav') {
+      const label = btn.target === '#work' ? 'Taking you to my work →' : 'Taking you to the contact section →';
+      sendNavFeedback(label, () => {
+        setShowChat(false);
+        setTimeout(() => {
+          (window as any).lenis?.scrollTo(btn.target, {
+            duration: 2.0,
+            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+          });
+          // fallback for native scroll when lenis is absent on mobile
+          if (!(window as any).lenis) {
+            document.querySelector(btn.target)?.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 400);
+      });
+    } else if (btn.kind === 'project') {
+      const name = works.find(w => w.id === btn.id)?.title ?? 'project';
+      sendNavFeedback(`Opening ${name} →`, () => {
+        setShowChat(false);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('open-project', { detail: { id: btn.id } }));
+        }, 400);
+      });
+    }
+  };
+
+  const send = async (text: string) => {
+    if (!text.trim() || loading) return;
+    userScrolledRef.current = false;
+    setSending(true);
+    setTimeout(() => setSending(false), 500);
+    const next: Message[] = [...messages, { role: 'user', content: text, ts: now() }];
+    setMessages(next);
+    setNewIdx(next.length - 1);
+    setInput('');
+    setLoading(true);
+    const thinkDelay = 600 + Math.random() * 800;
+    try {
+      const apiMessages = next
+        .filter(m => m.content && m.content.trim() !== '')
+        .map(({ role, content }) => ({ role, content }));
+      const res  = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: apiMessages }) });
+      const data = await res.json();
+      const content = (data.content || '').trim();
+      if (!content || data.error) throw new Error(data.error || 'empty response');
+      await new Promise(r => setTimeout(r, thinkDelay));
+      setMessages(prev => { const updated = [...prev, { role: 'assistant' as const, content, ts: now() }]; setNewIdx(updated.length - 1); return updated; });
+      setTimeout(playPop, 120);
+    } catch {
+      await new Promise(r => setTimeout(r, thinkDelay));
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Oops, algo se rompió. ¿Lo intentamos de nuevo?', ts: now() }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContactSent = (text: string) => send(text);
+
+  return (
+    <>
+      {/* ── Floating pill button — visible when sheet is closed ── */}
+      <AnimatePresence>
+        {!showChat && (
+          <motion.button
+            key="chat-pill"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.76, 0, 0.24, 1] }}
+            onClick={() => setShowChat(true)}
+            style={{
+              position: 'fixed', bottom: 24, right: 16, zIndex: 9998,
+              background: 'linear-gradient(135deg, #000 0%, #1a0d0f 60%, #000 100%)',
+              borderRadius: 999, padding: '12px 20px',
+              display: 'flex', alignItems: 'center', gap: 8,
+              boxShadow: '0 0 0 1px rgba(201,138,151,0.2), 0 8px 32px rgba(0,0,0,0.3)',
+              border: 'none', cursor: 'pointer', fontFamily: FONT,
+            }}
+          >
+            <motion.div
+              style={{ width: 8, height: 8, borderRadius: '50%', background: '#c98a97', flexShrink: 0 }}
+              animate={{ scale: [1, 1.28, 0.95, 1.15, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: [0.33, 0, 0.66, 1], repeatDelay: 1.2, times: [0, 0.2, 0.38, 0.55, 1] }}
+            />
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.06em' }}>Chat</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* ── Bottom sheet + backdrop ── */}
+      <AnimatePresence>
+        {showChat && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="chat-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              onClick={() => setShowChat(false)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 9997,
+                background: 'rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+              }}
+            />
+
+            {/* Sheet */}
+            <motion.div
+              key="chat-sheet"
+              initial={{ y: '100%' }}
+              animate={{ y: '0%' }}
+              exit={{ y: '100%' }}
+              transition={{ duration: 0.45, ease: [0.76, 0, 0.24, 1] }}
+              data-lenis-prevent
+              style={{
+                position: 'fixed', bottom: 0, left: 0, right: 0,
+                height: '88vh', zIndex: 9998,
+                background: '#000',
+                borderRadius: '20px 20px 0 0',
+                display: 'flex', flexDirection: 'column',
+                fontFamily: FONT, touchAction: 'none',
+              }}
+            >
+              {/* Drag handle */}
+              <div style={{ padding: '12px 0 6px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 36, height: 4, borderRadius: 999, background: 'rgba(255,255,255,0.15)' }} />
+              </div>
+
+              {/* Sheet header */}
+              <div style={{
+                height: 50, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 500, letterSpacing: '0.04em' }}>Chat</span>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <ActionBtn onClick={e => { e.stopPropagation(); handleRestart(); }} title="Nueva conversación" disabled={loading || restarting}><IconRestart /></ActionBtn>
+                  <ActionBtn onClick={e => { e.stopPropagation(); setShowChat(false); }} title="Cerrar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </ActionBtn>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div
+                ref={scrollRef}
+                style={{ flex: 1, overflowY: 'auto', padding: '20px 16px 12px', display: 'flex', flexDirection: 'column', gap: 20, overscrollBehavior: 'contain' }}
+                onScroll={e => {
+                  const el = e.currentTarget;
+                  userScrolledRef.current = el.scrollHeight - el.scrollTop - el.clientHeight > 80;
+                }}
+              >
+                <AnimatePresence initial={false}>
+                  {messages.map((m, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                      style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: m.role === 'assistant' ? 2 : 0, paddingRight: m.role === 'user' ? 2 : 0 }}>
+                        <span style={{ fontSize: 11, letterSpacing: '0.03em', color: 'rgba(255,255,255,0.4)', fontFamily: FONT }}>{m.role === 'user' ? 'Tú' : 'Adrián'}</span>
+                        {m.ts && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: FONT }}>{m.ts}</span>}
+                      </div>
+                      <div style={{ maxWidth: m.role === 'user' ? '85%' : '100%' }}>
+                        <MessageContent msg={m} isNew={i === newIdx} onContactSent={handleContactSent} />
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                {loading && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                    <span style={{ fontSize: 11, letterSpacing: '0.03em', color: 'rgba(255,255,255,0.4)', fontFamily: FONT, paddingLeft: 2 }}>Adrián</span>
+                    <ThinkingIndicator />
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Suggestions */}
+              {!loading && !restarting && (() => {
+                const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+                const key = (lastAssistant?.type ?? 'text') as MessageType | 'text';
+                const suggestions = messages.length === 1 ? QUICK : SUGGESTIONS[key];
+                return (
+                  <div style={{ padding: '0 16px 10px', display: 'flex', flexWrap: 'wrap', gap: 7, flexShrink: 0 }}>
+                    {suggestions.map((q) => (
+                      <button
+                        key={q.label}
+                        onClick={() => handleAction(q)}
+                        style={{
+                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 999, padding: '7px 14px', fontSize: 12,
+                          color: 'rgba(255,255,255,0.75)', fontFamily: FONT, cursor: 'pointer',
+                          letterSpacing: '0.01em', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {q.label}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', flexShrink: 0 }} />
+
+              {/* Input */}
+              <div style={{ padding: '12px 16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexShrink: 0 }}>
+                <motion.form
+                  onSubmit={e => { e.preventDefault(); if (!input.trim()) { setShake(true); setTimeout(() => setShake(false), 500); return; } send(input); }}
+                  animate={shake ? { x: [0, -6, 6, -5, 5, -3, 3, 0] } : { x: 0 }}
+                  transition={{ duration: 0.45, ease: 'easeInOut' }}
+                  style={{ background: 'rgba(50,50,50,0.9)', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(255,255,255,0.07)' }}
+                >
+                  <input
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="Pregúntame lo que quieras..."
+                    disabled={loading || restarting}
+                    style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.9)', fontSize: 14, fontFamily: FONT, opacity: restarting ? 0.4 : 1 }}
+                  />
+                  <motion.button
+                    type="submit"
+                    disabled={loading || restarting}
+                    whileTap={input.trim() ? { scale: 0.88 } : {}}
+                    style={{ opacity: input.trim() && !loading && !restarting ? 1 : 0.25, transition: 'opacity 0.2s', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#c98a97', display: 'flex', alignItems: 'center', overflow: 'hidden', width: 20, height: 20 }}
+                  >
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      {sending ? (
+                        <motion.span key="sending" initial={{ y: 0, opacity: 1 }} animate={{ y: -20, opacity: 0 }} exit={{ y: 20, opacity: 0 }} transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }} style={{ display: 'flex', alignItems: 'center' }}><IconSend /></motion.span>
+                      ) : (
+                        <motion.span key="idle" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }} style={{ display: 'flex', alignItems: 'center' }}><IconSend /></motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </motion.form>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ── Desktop chat component ────────────────────────────────────────────────
+function DesktopChatBot() {
   const [isOpen, setIsOpen]         = useState(false);
   const [ready, setReady]           = useState(false);
   const [pillReady, setPillReady]   = useState(true);
@@ -900,7 +1235,7 @@ export default function ChatBot() {
         onAnimationComplete={handleExpandComplete}
         onClick={!isOpen ? handleOpen : undefined}
         style={{
-          background: isOpen ? '#2c2c2c' : 'linear-gradient(135deg, #2c2c2c 0%, #3a2e30 60%, #2c2c2c 100%)',
+          background: isOpen ? '#000' : 'linear-gradient(135deg, #000 0%, #1a0d0f 60%, #000 100%)',
           overflow: 'hidden',
           boxShadow: isOpen ? 'none' : '0 0 0 1px rgba(201,138,151,0.12)',
           display: 'flex',
@@ -989,7 +1324,7 @@ export default function ChatBot() {
                         onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
                         style={{
                           pointerEvents: 'all',
-                          background: 'rgba(44,44,44,0.9)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                          background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
                           border: '1px solid rgba(255,255,255,0.1)', borderRadius: 999,
                           padding: '4px 11px 4px 9px', display: 'flex', alignItems: 'center', gap: 5,
                           cursor: 'pointer', color: 'rgba(255,255,255,0.5)', fontFamily: FONT, fontSize: 11, letterSpacing: '0.04em',
@@ -1106,7 +1441,7 @@ export default function ChatBot() {
                   }}
                   animate={shake ? { x: [0, -6, 6, -5, 5, -3, 3, 0] } : { x: 0 }}
                   transition={{ duration: 0.45, ease: 'easeInOut' }}
-                  style={{ background: 'rgba(50,50,50,0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(255,255,255,0.07)', transition: 'border-color 0.2s' }}
+                  style={{ background: 'rgba(10,10,10,0.9)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(255,255,255,0.07)', transition: 'border-color 0.2s' }}
                   onFocus={e => (e.currentTarget.style.borderColor = 'rgba(201,138,151,0.3)')}
                   onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}
                 >
@@ -1158,6 +1493,21 @@ export default function ChatBot() {
       </motion.div>
     </div>
   );
+}
+
+// ── Root export — picks desktop vs mobile ─────────────────────────────────
+export default function ChatBot() {
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted]   = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  if (!mounted) return null;
+  return isMobile ? <MobileChatBot /> : <DesktopChatBot />;
 }
 
 // ── Action button ─────────────────────────────────────────────────────────

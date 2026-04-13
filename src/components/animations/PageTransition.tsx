@@ -8,9 +8,9 @@ export default function PageTransition({ children }: { children: ReactNode }) {
     const pathname = usePathname();
 
     return (
-        <div key={pathname} className="w-fit h-full flex">
+        <div key={pathname} className="w-full md:w-fit h-full flex">
             <motion.div
-                className="w-fit h-full flex"
+                className="w-full md:w-fit h-full flex"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}

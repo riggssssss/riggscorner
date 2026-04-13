@@ -163,6 +163,13 @@ button:focus-visible {
   animation: shimmer 2s ease-in-out infinite;
 }
 
+/* ── Mobile overrides ───────────────────────────────────────── */
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden;
+  }
+}
+
 /* Hide Next.js Dev Tools / Vercel Toolbar */
 vercel-login-banner,
 vercel-toolbar,

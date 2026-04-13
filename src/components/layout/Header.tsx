@@ -34,8 +34,11 @@ function MagneticLink({
 
     return (
         <Link
+            ref={ref}
             href={href}
             onClick={onClick}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
             className={`relative transition-all duration-300 ease-out ${isActive ? 'text-[#c98a97]' : 'text-gray-400 hover:text-gray-700'}`}
             style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
         >
@@ -51,69 +54,50 @@ function MagneticLink({
     );
 }
 
+const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+
+const NAV_LINKS = [
+    { label: 'About',   target: '#about'   },
+    { label: 'Work',    target: '#work'     },
+    { label: 'Contact', target: '#contact'  },
+] as const;
+
 export default function Header() {
     const { activeSection } = useNavigationStore();
+    const scrollTo = (target: string) => {
+        (window as any).lenis?.scrollTo(target, {
+            duration: 2.0,
+            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        });
+    };
 
     return (
-        <motion.header
-            className="fixed top-0 left-0 w-full z-40 px-6 md:px-10 py-6 flex justify-end items-center"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5, ease: [0.23, 1, 0.32, 1] }}
-        >
-            {/* Navigation */}
-            <nav className="hidden md:flex gap-10 uppercase text-xs tracking-widest" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-                <MagneticLink
-                    href="#about"
-                    isActive={activeSection === 'about'}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        (window as any).lenis?.scrollTo('#about', {
-                            duration: 2.0,
-                            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
-                        });
-                    }}
-                >
-                    About
-                </MagneticLink>
-                <MagneticLink
-                    href="#work"
-                    isActive={activeSection === 'work'}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        (window as any).lenis?.scrollTo('#work', {
-                            duration: 2.0,
-                            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
-                        });
-                    }}
-                >
-                    Work
-                </MagneticLink>
-                <MagneticLink
-                    href="#contact"
-                    isActive={activeSection === 'contact'}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        (window as any).lenis?.scrollTo('#contact', {
-                            duration: 2.0,
-                            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
-                        });
-                    }}
-                >
-                    Contact
-                </MagneticLink>
-            </nav>
-
-            {/* Premium mobile menu button */}
-            <motion.button
-                className="md:hidden relative w-8 h-8 flex flex-col items-center justify-center gap-1.5"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                data-magnetic
+        <>
+            <motion.header
+                className="fixed top-0 left-0 w-full z-40 px-6 md:px-10 py-6 flex justify-end items-center"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.5, ease: [0.23, 1, 0.32, 1] }}
             >
-                <motion.span className="w-full h-[1px] bg-white origin-center" />
-                <motion.span className="w-3/4 h-[1px] bg-white origin-center" />
-            </motion.button>
-        </motion.header>
+                {/* Desktop Navigation */}
+                <nav className="hidden md:flex gap-10 uppercase text-xs tracking-widest" style={{ fontFamily: FONT }}>
+                    {NAV_LINKS.map(({ label, target }) => (
+                        <MagneticLink
+                            key={label}
+                            href={target}
+                            isActive={activeSection === label.toLowerCase()}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                scrollTo(target);
+                            }}
+                        >
+                            {label}
+                        </MagneticLink>
+                    ))}
+                </nav>
+
+            </motion.header>
+
+        </>
     );
 }
