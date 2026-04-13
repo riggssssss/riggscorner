@@ -1,111 +1,158 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from "react";
 
-const words = ['Design', 'Motion', 'Code', 'Experience'];
+const words = [
+  "hello",
+  "hola",
+  "bonjour",
+];
 
-export default function Preloader() {
-    const [loading, setLoading] = useState(true);
-    const [wordIndex, setWordIndex] = useState(0);
-    const [percentage, setPercentage] = useState(0);
+const TYPING_SPEED = 70;
+const PAUSE_AFTER_WORD = 350;
+const ERASE_SPEED = 30;
 
-    useEffect(() => {
-        try {
-            const hasLoaded = sessionStorage.getItem('hasLoaded');
-            if (hasLoaded) {
-                setLoading(false);
-                return;
-            }
-        } catch (e) {
-            // Handle errors silently
+// Pre-calculate total duration for progress bar
+function estimateTotalMs() {
+  let total = 0;
+  for (let i = 0; i < words.length; i++) {
+    total += words[i].length * TYPING_SPEED;
+    total += PAUSE_AFTER_WORD;
+    if (i < words.length - 1) total += words[i].length * ERASE_SPEED;
+  }
+  total += 800; // final pause before fade
+  return total;
+}
+
+const TOTAL_MS = estimateTotalMs();
+
+export default function Preloader({ onDone }: { onDone: () => void }) {
+  const [displayed, setDisplayed] = useState("");
+  const [wordIndex, setWordIndex] = useState(0);
+  const [phase, setPhase] = useState<"typing" | "pausing" | "erasing">("typing");
+  const [visible, setVisible] = useState(true);
+  const [progress, setProgress] = useState(0);
+
+  // Progress bar ticker
+  useEffect(() => {
+    const start = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      setProgress(Math.min(elapsed / TOTAL_MS, 1));
+    }, 16);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Typing machine
+  useEffect(() => {
+    const currentWord = words[wordIndex];
+
+    if (phase === "typing") {
+      if (displayed.length < currentWord.length) {
+        const t = setTimeout(() => {
+          setDisplayed(currentWord.slice(0, displayed.length + 1));
+        }, TYPING_SPEED);
+        return () => clearTimeout(t);
+      } else {
+        const t = setTimeout(() => setPhase("pausing"), PAUSE_AFTER_WORD);
+        return () => clearTimeout(t);
+      }
+    }
+
+    if (phase === "pausing") {
+      if (wordIndex === words.length - 1) {
+        const t = setTimeout(() => {
+          setProgress(1);
+          setTimeout(() => {
+            setVisible(false);
+            setTimeout(onDone, 500);
+          }, 150);
+        }, 800);
+        return () => clearTimeout(t);
+      }
+      setPhase("erasing");
+    }
+
+    if (phase === "erasing") {
+      if (displayed.length > 0) {
+        const t = setTimeout(() => {
+          setDisplayed((d) => d.slice(0, d.length - 1));
+        }, ERASE_SPEED);
+        return () => clearTimeout(t);
+      } else {
+        setWordIndex((i) => i + 1);
+        setPhase("typing");
+      }
+    }
+  }, [displayed, phase, wordIndex, onDone]);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        backgroundColor: "#000",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.5s ease",
+        pointerEvents: visible ? "all" : "none",
+      }}
+    >
+      {/* Typed word */}
+      <span
+        style={{
+          fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+          fontWeight: 300,
+          fontSize: "clamp(0.7rem, 1.2vw, 0.875rem)",
+          letterSpacing: "0.2em",
+          color: "#fff",
+          minWidth: "10ch",
+          textAlign: "center",
+        }}
+      >
+        {displayed}
+        <span
+          style={{
+            display: "inline-block",
+            width: "1px",
+            height: "0.85em",
+            backgroundColor: "#fff",
+            marginLeft: "2px",
+            verticalAlign: "middle",
+            animation: "blink 0.7s step-end infinite",
+          }}
+        />
+      </span>
+
+      {/* Progress bar — below text */}
+      <div
+        style={{
+          marginTop: "1.25rem",
+          width: "5rem",
+          height: "1px",
+          backgroundColor: "rgba(255,255,255,0.12)",
+        }}
+      >
+        <div
+          style={{
+            height: "1px",
+            backgroundColor: "#fff",
+            width: `${progress * 100}%`,
+            transition: "width 0.1s linear",
+          }}
+        />
+      </div>
+
+      <style>{`
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0; }
         }
-
-        // Word cycling animation
-        const wordInterval = setInterval(() => {
-            setWordIndex((prev) => (prev + 1) % words.length);
-        }, 400);
-
-        // Percentage counter
-        const interval = setInterval(() => {
-            setPercentage((prev) => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    clearInterval(wordInterval);
-                    setTimeout(() => {
-                        setLoading(false);
-                        try {
-                            sessionStorage.setItem('hasLoaded', 'true');
-                        } catch (e) { }
-                    }, 600);
-                    return 100;
-                }
-                return prev + Math.floor(Math.random() * 8) + 2;
-            });
-        }, 50);
-
-        return () => {
-            clearInterval(interval);
-            clearInterval(wordInterval);
-        };
-    }, []);
-
-    return (
-        <AnimatePresence mode="wait">
-            {loading && (
-                <motion.div
-                    className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black text-white overflow-hidden"
-                    initial={{ opacity: 1 }}
-                    exit={{
-                        clipPath: 'inset(0 0 100% 0)',
-                        transition: { duration: 1, ease: [0.76, 0, 0.24, 1] }
-                    }}
-                >
-                    {/* Animated word */}
-                    <div className="relative h-24 overflow-hidden mb-8">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={wordIndex}
-                                className="text-6xl md:text-8xl font-serif tracking-tighter"
-                                initial={{ y: 60, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: -60, opacity: 0 }}
-                                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                            >
-                                {words[wordIndex]}
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="w-48 h-[1px] bg-white/20 relative overflow-hidden">
-                        <motion.div
-                            className="absolute top-0 left-0 h-full bg-white"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${percentage}%` }}
-                            transition={{ duration: 0.1 }}
-                        />
-                    </div>
-
-                    {/* Percentage */}
-                    <motion.div
-                        className="mt-4 text-sm font-mono tracking-widest text-white/50"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        {String(Math.min(percentage, 100)).padStart(3, '0')}%
-                    </motion.div>
-
-                    {/* Corner decorations */}
-                    <div className="absolute top-8 left-8 text-xs uppercase tracking-widest text-white/30">
-                        Loading
-                    </div>
-                    <div className="absolute bottom-8 right-8 text-xs uppercase tracking-widest text-white/30">
-                        Portfolio ©2024
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
+      `}</style>
+    </div>
+  );
 }
