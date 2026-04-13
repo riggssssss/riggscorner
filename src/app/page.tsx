@@ -339,7 +339,7 @@ export default function Home() {
                       <div className="h-[80vh] flex flex-col justify-center relative group pointer-events-auto" style={{ width: 'calc(100vw - 500px)' }}>
 
                         {/* Video/Image Container */}
-                        <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
+                        <div className="relative w-full" style={{ aspectRatio: '2/1', maxHeight: 'calc(80vh - 120px)' }}>
                           <motion.div
                             ref={(el) => { workRefs.current[work.id] = el; }}
                             className="w-full h-full relative cursor-pointer rounded-2xl overflow-hidden"
@@ -422,7 +422,7 @@ export default function Home() {
                 {/* 03b. Coming soon slide */}
                 <Slide className="w-[100vw] bg-transparent relative shrink-0 flex items-center justify-start pl-20 pointer-events-none">
                   <div className="h-[80vh] flex flex-col justify-center pointer-events-auto" style={{ width: 'calc(100vw - 500px)' }}>
-                    <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
+                    <div className="relative w-full" style={{ aspectRatio: '2/1', maxHeight: 'calc(80vh - 120px)' }}>
                       <div className="w-full h-full rounded-2xl overflow-hidden relative" style={{ background: '#eedde1' }}>
                         <div className="skeleton-shimmer" />
                       </div>
