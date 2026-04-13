@@ -14,6 +14,10 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: '--font-playfa
 export const metadata: Metadata = {
   title: "Portfolio",
   description: "Minimalist Folio",
+  icons: {
+    icon: [{ url: '/icon.png', type: 'image/png', sizes: '32x32' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export default function RootLayout({
